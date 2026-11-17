@@ -1,0 +1,13 @@
+venv/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.DS_Store
+data/train.csv
+data/test.csv
+data/fake-news.zip
+models/*.pkl
+logs/
+.pytest_cache/
+.ipynb_checkpoints/

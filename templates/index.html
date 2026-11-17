@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fake News Detector | Machine Learning NLP & XAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
+    <!-- Top Gradient Bar -->
+    <div class="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-indigo-500 to-rose-500"></div>
+
+    <div class="max-w-4xl mx-auto px-4 py-10 md:py-14">
+        
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-indigo-400 mb-4 shadow-inner">
+                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                Calibrated Linear SVC &bull; TF-IDF &bull; SMOTETomek &bull; Explainable AI (XAI)
+            </div>
+            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+                Fake News Detection System
+            </h1>
+            <p class="mt-3 text-slate-400 text-base md:text-lg max-w-2xl mx-auto">
+                Machine learning-powered verification tool that identifies misinformation and explains key linguistic cues using feature attribution.
+            </p>
+        </header>
+
+        <!-- Model Evaluation Metrics Cards -->
+        {% if metrics %}
+        <div class="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Test Accuracy</span>
+                <p class="text-2xl font-bold text-emerald-400 mt-1">{{ "%.1f"|format(metrics.accuracy * 100) }}%</p>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">ROC-AUC Score</span>
+                <p class="text-2xl font-bold text-sky-400 mt-1">{{ "%.3f"|format(metrics.roc_auc if metrics.roc_auc else 1.0) }}</p>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Fake F1-Score</span>
+                <p class="text-2xl font-bold text-indigo-400 mt-1">{{ "%.1f"|format(metrics.f1_score_fake * 100) }}%</p>
+            </div>
+            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
+                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Dataset Source</span>
+                <p class="text-xs font-semibold text-slate-300 mt-2 truncate" title="{{ metrics.source_dataset }}">
+                    {{ metrics.source_dataset }} ({{ metrics.total_samples }} samples)
+                </p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Input Section -->
+        <main class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur">
+            <div class="flex items-center justify-between mb-3">
+                <label for="newsInput" class="text-sm font-semibold text-slate-300">
+                    Input Article or Headline
+                </label>
+                <span id="charCount" class="text-xs text-slate-500 font-mono">0 chars</span>
+            </div>
+
+            <textarea 
+                id="newsInput" 
+                rows="5" 
+                placeholder="Paste news paragraph, statement, or headline here to inspect authenticity..." 
+                class="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl p-4 text-slate-100 placeholder-slate-500 outline-none transition duration-150 resize-y text-base"
+            ></textarea>
+
+            <!-- Quick Samples -->
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+                <span class="text-xs text-slate-400 font-medium mr-1">Try Presets:</span>
+                <button 
+                    onclick="loadSample(1)" 
+                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
+                >
+                    🚀 NASA Mars Rover (Real)
+                </button>
+                <button 
+                    onclick="loadSample(2)" 
+                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
+                >
+                    👽 Covert Alien Bases (Fake)
+                </button>
+                <button 
+                    onclick="loadSample(3)" 
+                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
+                >
+                    🍋 Miracle Cancer Fruit (Fake)
+                </button>
+                <button 
+                    onclick="loadSample(4)" 
+                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
+                >
+                    ⚡ EU AI Act (Real)
+                </button>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="mt-6 flex flex-col sm:flex-row gap-3">
+                <button 
+                    id="submitBtn" 
+                    onclick="classifyNews()" 
+                    class="flex-1 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold py-3.5 px-6 rounded-2xl transition duration-150 shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 active:scale-[0.99]"
+                >
+                    <svg id="btnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Analyze News Authenticity</span>
+                </button>
+                <button 
+                    onclick="clearInput()" 
+                    class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-2xl transition duration-150 border border-slate-700/70"
+                >
+                    Clear
+                </button>
+            </div>
+
+            <!-- Error Banner -->
+            <div id="errorBox" class="hidden mt-5 p-4 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-sm"></div>
+
+            <!-- Result Card -->
+            <div id="resultCard" class="hidden mt-6 p-6 rounded-2xl border transition-all duration-300">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/60">
+                    <div>
+                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">Prediction Result</span>
+                        <div class="flex items-center gap-3 mt-1">
+                            <span id="badgeIcon" class="text-2xl"></span>
+                            <span id="badgeLabel" class="text-3xl font-extrabold tracking-tight"></span>
+                        </div>
+                    </div>
+                    <div class="text-left sm:text-right">
+                        <span class="text-xs text-slate-400">Confidence Score</span>
+                        <div id="confidenceText" class="text-2xl font-bold text-white mt-0.5"></div>
+                    </div>
+                </div>
+
+                <!-- Probability Bar Chart -->
+                <div class="mt-5 space-y-3">
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-emerald-400">Real News Probability</span>
+                            <span id="probRealText" class="text-slate-300"></span>
+                        </div>
+                        <div class="w-full bg-slate-950 rounded-full h-3 overflow-hidden p-0.5 border border-slate-800">
+                            <div id="probRealBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs font-semibold mb-1">
+                            <span class="text-rose-400">Fake News Probability</span>
+                            <span id="probFakeText" class="text-slate-300"></span>
+                        </div>
+                        <div class="w-full bg-slate-950 rounded-full h-3 overflow-hidden p-0.5 border border-slate-800">
+                            <div id="probFakeBar" class="bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explainable AI (XAI) Keywords Attribution -->
+                <div id="xaiSection" class="mt-6 pt-5 border-t border-slate-800/60">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Explainable AI: Key Influential Tokens
+                        </h4>
+                        <span class="text-[10px] text-slate-500">TF-IDF &bull; Linear SVC Weights</span>
+                    </div>
+                    <div id="keywordPills" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+
+                <div class="mt-5 pt-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
+                    <div>Length: <span id="wordCount" class="font-mono text-slate-200">0</span> words</div>
+                    <div class="text-slate-500">Calibrated Probability Engine</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer / Portfolio Attribution -->
+        <footer class="mt-12 text-center text-xs text-slate-500 space-y-2">
+            <p>End-to-End ML Pipeline with Explainable AI (XAI) Attribution.</p>
+            <p>Designed for Machine Learning NLP Portfolio demonstration.</p>
+        </footer>
+    </div>
+
+    <script>
+        const newsInput = document.getElementById('newsInput');
+        const charCount = document.getElementById('charCount');
+        const errorBox = document.getElementById('errorBox');
+        const resultCard = document.getElementById('resultCard');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnIcon = document.getElementById('btnIcon');
+        const keywordPills = document.getElementById('keywordPills');
+
+        const samples = {
+            1: "NASA scientists confirmed today that the exploratory rover has made a smooth landing on the surface of Mars, transmitting clear high-resolution images back to mission control.",
+            2: "Anonymous whistleblowers claim world governments have maintained covert alien research facilities beneath polar ice sheets for decades to conceal extraterrestrial technology.",
+            3: "Social media posts claim drinking boiled lemon and baking soda mixture eliminates malignant tumors overnight, rendering chemotherapy completely unnecessary.",
+            4: "European Union lawmakers approved stringent transparency requirements and risk categorizations for high-risk artificial intelligence deployments across member states."
+        };
+
+        newsInput.addEventListener('input', () => {
+            charCount.textContent = `${newsInput.value.length} chars`;
+        });
+
+        function loadSample(id) {
+            newsInput.value = samples[id];
+            charCount.textContent = `${newsInput.value.length} chars`;
+            errorBox.classList.add('hidden');
+        }
+
+        function clearInput() {
+            newsInput.value = '';
+            charCount.textContent = '0 chars';
+            errorBox.classList.add('hidden');
+            resultCard.classList.add('hidden');
+        }
+
+        async function classifyNews() {
+            const text = newsInput.value.trim();
+            errorBox.classList.add('hidden');
+
+            if (text.length < 10) {
+                errorBox.textContent = "Please enter at least 10 characters of news text.";
+                errorBox.classList.remove('hidden');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-75');
+            btnIcon.classList.add('animate-spin');
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Failed to process news text.');
+                }
+
+                displayResult(data);
+            } catch (err) {
+                errorBox.textContent = err.message;
+                errorBox.classList.remove('hidden');
+                resultCard.classList.add('hidden');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-75');
+                btnIcon.classList.remove('animate-spin');
+            }
+        }
+
+        function displayResult(data) {
+            const isFake = data.prediction === 'Fake';
+            
+            resultCard.className = isFake
+                ? "mt-6 p-6 rounded-2xl border bg-rose-950/20 border-rose-800/50 shadow-lg shadow-rose-950/30"
+                : "mt-6 p-6 rounded-2xl border bg-emerald-950/20 border-emerald-800/50 shadow-lg shadow-emerald-950/30";
+
+            document.getElementById('badgeIcon').textContent = isFake ? '🚨' : '✅';
+            const badgeLabel = document.getElementById('badgeLabel');
+            badgeLabel.textContent = isFake ? 'SUSPECTED FAKE' : 'LIKELY REAL';
+            badgeLabel.className = isFake 
+                ? "text-3xl font-extrabold tracking-tight text-rose-400"
+                : "text-3xl font-extrabold tracking-tight text-emerald-400";
+
+            document.getElementById('confidenceText').textContent = `${data.confidence}%`;
+            document.getElementById('probRealText').textContent = `${data.probability_real}%`;
+            document.getElementById('probFakeText').textContent = `${data.probability_fake}%`;
+            document.getElementById('wordCount').textContent = data.word_count;
+
+            document.getElementById('probRealBar').style.width = `${data.probability_real}%`;
+            document.getElementById('probFakeBar').style.width = `${data.probability_fake}%`;
+
+            // Render XAI Tokens
+            keywordPills.innerHTML = '';
+            if (data.key_influences && data.key_influences.length > 0) {
+                data.key_influences.forEach(item => {
+                    const pill = document.createElement('span');
+                    const isFakeToken = item.indicator === 'fake';
+                    pill.className = isFakeToken
+                        ? "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-900/40 text-rose-300 border border-rose-700/50"
+                        : "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-700/50";
+                    
+                    pill.innerHTML = `
+                        <span>${item.token}</span>
+                        <span class="text-[10px] opacity-75 font-mono">${item.weight > 0 ? '+' : ''}${item.weight}</span>
+                    `;
+                    keywordPills.appendChild(pill);
+                });
+            } else {
+                keywordPills.innerHTML = '<span class="text-xs text-slate-500 italic">No strong polar keywords detected in vocabulary.</span>';
+            }
+
+            resultCard.classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
