@@ -201,7 +201,7 @@
 
                 <div class="mt-5 pt-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
                     <div>Length: <span id="wordCount" class="font-mono text-slate-200">0</span> words</div>
-                    <div class="text-slate-500">Calibrated Probability Engine</div>
+                    <div class="text-slate-500">Decision threshold: <span id="thresholdText" class="font-mono text-slate-300">0.50</span> &bull; Calibrated Probability Engine</div>
                 </div>
             </div>
         </main>
@@ -344,6 +344,7 @@
             document.getElementById('probRealText').textContent = `${data.probability_real}%`;
             document.getElementById('probFakeText').textContent = `${data.probability_fake}%`;
             document.getElementById('wordCount').textContent = data.word_count;
+            document.getElementById('thresholdText').textContent = (data.decision_threshold ?? 0.5).toFixed(2);
 
             document.getElementById('probRealBar').style.width = `${data.probability_real}%`;
             document.getElementById('probFakeBar').style.width = `${data.probability_fake}%`;

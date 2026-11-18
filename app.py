@@ -17,12 +17,22 @@ app = Flask(__name__)
 model_path = os.path.join(MODELS_DIR, 'model.pkl')
 vec_path = os.path.join(MODELS_DIR, 'vectorizer.pkl')
 weights_path = os.path.join(MODELS_DIR, 'feature_weights.json')
+threshold_path = os.path.join(MODELS_DIR, 'threshold.json')
 eval_path = os.path.join(LOGS_DIR, 'evaluation.json')
 
 model = None
 tfidf = None
 feature_weights = {}
 eval_metrics = None
+DECISION_THRESHOLD = 0.5
+
+try:
+    if os.path.exists(threshold_path):
+        with open(threshold_path, 'r') as f:
+            DECISION_THRESHOLD = float(json.load(f).get('threshold', 0.5))
+        print(f"Decision threshold loaded: {DECISION_THRESHOLD}")
+except Exception as e:
+    print(f"Warning: Could not load threshold: {e}")
 
 try:
     if os.path.exists(model_path) and os.path.exists(vec_path):
@@ -112,20 +122,18 @@ def predict():
     # Vectorize
     vec = tfidf.transform([cleaned])
 
-    # Predict
-    pred = int(model.predict(vec)[0])
-    label = 'Fake' if pred == 1 else 'Real'
-
-    # Probabilities
+    # Probabilities (calibrated)
     if hasattr(model, 'predict_proba'):
         proba = model.predict_proba(vec)[0]
         prob_real = float(proba[0]) * 100
         prob_fake = float(proba[1]) * 100
-        confidence = prob_fake if pred == 1 else prob_real
     else:
-        confidence = 100.0
-        prob_real = 0.0 if pred == 1 else 100.0
-        prob_fake = 100.0 if pred == 1 else 0.0
+        prob_real, prob_fake = 0.0, 100.0
+
+    # Decision uses the tuned threshold (optimized on validation split)
+    pred = 1 if (prob_fake / 100.0) >= DECISION_THRESHOLD else 0
+    label = 'Fake' if pred == 1 else 'Real'
+    confidence = prob_fake if pred == 1 else prob_real
 
     # Explainability (XAI)
     explanation = explain_prediction(cleaned)
@@ -136,6 +144,7 @@ def predict():
         'confidence': round(confidence, 2),
         'probability_real': round(prob_real, 2),
         'probability_fake': round(prob_fake, 2),
+        'decision_threshold': DECISION_THRESHOLD,
         'snippet': raw_text[:140] + ('...' if len(raw_text) > 140 else ''),
         'character_count': len(raw_text),
         'word_count': len(raw_text.split()),
@@ -200,6 +209,7 @@ def health():
         'model_loaded': model is not None,
         'vectorizer_loaded': tfidf is not None,
         'feature_weights_loaded': len(feature_weights) > 0,
+        'decision_threshold': DECISION_THRESHOLD,
         'feedback_samples_pending_retrain': feedback_count
     })
 

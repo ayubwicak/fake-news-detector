@@ -1,0 +1,32 @@
+{
+  "source_dataset": "train.csv",
+  "total_samples": 40455,
+  "train_samples": 32364,
+  "test_samples": 8091,
+  "n_features": 20000,
+  "accuracy": 0.975157582499073,
+  "roc_auc": 0.9948281843849944,
+  "precision_fake": 0.969423025791013,
+  "recall_fake": 0.9769560557341908,
+  "f1_score_fake": 0.9731749632990792,
+  "precision_real": 0.9801385681293302,
+  "recall_real": 0.973617802248222,
+  "f1_score_real": 0.9768673034871677,
+  "threshold": 0.4400000000000002,
+  "confusion_matrix": [
+    [
+      4244,
+      115
+    ],
+    [
+      86,
+      3646
+    ]
+  ],
+  "methodology": {
+    "split_before_resampling": true,
+    "tfidf_fit_on_train_only": true,
+    "smote_on_train_only": true,
+    "threshold_tuned_on_validation": true
+  }
+}

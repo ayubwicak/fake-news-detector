@@ -1,0 +1,36 @@
+{
+  "dataset": "train.csv",
+  "sample_rows": 12000,
+  "cv_folds": 3,
+  "results": {
+    "LinearSVC (calibrated in final model)": {
+      "accuracy_mean": 0.9645,
+      "accuracy_std": 0.002483277404291907,
+      "f1_fake_mean": 0.9614449445484915,
+      "f1_fake_std": 0.0027407293009848294,
+      "fit_time_sec": 57.66
+    },
+    "LogisticRegression": {
+      "accuracy_mean": 0.9585,
+      "accuracy_std": 0.004596194077712596,
+      "f1_fake_mean": 0.954984237978635,
+      "f1_fake_std": 0.00503073259915829,
+      "fit_time_sec": 54.9
+    },
+    "MultinomialNB": {
+      "accuracy_mean": 0.9251666666666667,
+      "accuracy_std": 0.004403281604540963,
+      "f1_fake_mean": 0.9201746422105915,
+      "f1_fake_std": 0.004714515306625068,
+      "fit_time_sec": 58.05
+    },
+    "ComplementNB": {
+      "accuracy_mean": 0.9251666666666667,
+      "accuracy_std": 0.004403281604540963,
+      "f1_fake_mean": 0.9201746422105915,
+      "f1_fake_std": 0.004714515306625068,
+      "fit_time_sec": 74.64
+    }
+  },
+  "winner": "LinearSVC (calibrated in final model)"
+}

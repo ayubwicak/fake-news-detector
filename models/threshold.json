@@ -1,0 +1,5 @@
+{
+  "threshold": 0.4400000000000002,
+  "validation_f1_fake": 0.9745406243081691,
+  "method": "maximize Fake F1 on 15% validation split"
+}

@@ -7,9 +7,9 @@ __pycache__/
 data/train.csv
 data/test.csv
 data/fake-news.zip
+data/raw_*.csv
 data/feedback.csv
 models/*.pkl
 models/best_params.json
-logs/
 .pytest_cache/
 .ipynb_checkpoints/
