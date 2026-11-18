@@ -177,6 +177,28 @@
                     <div id="keywordPills" class="flex flex-wrap gap-2 mt-2"></div>
                 </div>
 
+                <!-- Human Feedback Loop -->
+                <div id="feedbackSection" class="mt-6 pt-5 border-t border-slate-800/60">
+                    <div class="flex items-center justify-between mb-2">
+                        <h4 class="text-xs uppercase font-bold tracking-wider text-slate-400">
+                            Apakah prediksi ini benar?
+                        </h4>
+                        <span class="text-[10px] text-slate-500">Feedback &rarr; Retrain Loop</span>
+                    </div>
+                    <div id="feedbackButtons" class="flex flex-wrap gap-2">
+                        <button onclick="sendFeedback('correct')" class="text-xs px-3 py-2 rounded-lg bg-emerald-900/40 hover:bg-emerald-800/50 text-emerald-300 border border-emerald-700/50 transition">
+                            ✅ Benar
+                        </button>
+                        <button onclick="sendFeedback(0)" class="text-xs px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/50 transition">
+                            ❌ Sebenarnya Real
+                        </button>
+                        <button onclick="sendFeedback(1)" class="text-xs px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/50 transition">
+                            ❌ Sebenarnya Fake
+                        </button>
+                    </div>
+                    <p id="feedbackMessage" class="hidden text-xs mt-2"></p>
+                </div>
+
                 <div class="mt-5 pt-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
                     <div>Length: <span id="wordCount" class="font-mono text-slate-200">0</span> words</div>
                     <div class="text-slate-500">Calibrated Probability Engine</div>
@@ -207,6 +229,46 @@
             4: "European Union lawmakers approved stringent transparency requirements and risk categorizations for high-risk artificial intelligence deployments across member states."
         };
 
+        let lastAnalyzed = null;  // { text, predictionCode }
+
+        function resetFeedbackUi() {
+            document.getElementById('feedbackButtons').classList.remove('hidden');
+            const msg = document.getElementById('feedbackMessage');
+            msg.classList.add('hidden');
+            msg.textContent = '';
+        }
+
+        async function sendFeedback(choice) {
+            if (!lastAnalyzed) return;
+
+            // "correct" uses the model's own prediction as the true label
+            const label = choice === 'correct' ? lastAnalyzed.predictionCode : choice;
+
+            const feedbackButtons = document.getElementById('feedbackButtons');
+            const feedbackMessage = document.getElementById('feedbackMessage');
+
+            try {
+                const response = await fetch('/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: lastAnalyzed.text, label: label })
+                });
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    throw new Error(data.error || 'Gagal menyimpan feedback.');
+                }
+
+                feedbackButtons.classList.add('hidden');
+                feedbackMessage.className = "text-xs mt-2 text-emerald-400";
+                feedbackMessage.textContent = `✔ Feedback tersimpan (${data.total_feedback_samples} total). Jalankan "python train_model.py" agar model belajar dari koreksi ini.`;
+            } catch (err) {
+                feedbackMessage.className = "text-xs mt-2 text-rose-400";
+                feedbackMessage.textContent = err.message;
+            }
+            feedbackMessage.classList.remove('hidden');
+        }
+
         newsInput.addEventListener('input', () => {
             charCount.textContent = `${newsInput.value.length} chars`;
         });
@@ -222,6 +284,7 @@
             charCount.textContent = '0 chars';
             errorBox.classList.add('hidden');
             resultCard.classList.add('hidden');
+            lastAnalyzed = null;
         }
 
         async function classifyNews() {
@@ -304,6 +367,9 @@
             } else {
                 keywordPills.innerHTML = '<span class="text-xs text-slate-500 italic">No strong polar keywords detected in vocabulary.</span>';
             }
+
+            lastAnalyzed = { text: newsInput.value.trim(), predictionCode: data.label_code };
+            resetFeedbackUi();
 
             resultCard.classList.remove('hidden');
         }

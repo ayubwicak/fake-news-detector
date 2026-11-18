@@ -73,6 +73,29 @@ def load_dataset():
     df['clean_text'] = df['text'].apply(clean_text)
     df = df[df['clean_text'].str.len() > 10].reset_index(drop=True)
 
+    # Merge human feedback collected via the web UI (/feedback endpoint)
+    feedback_path = os.path.join(DATA_DIR, 'feedback.csv')
+    if os.path.exists(feedback_path):
+        try:
+            fb = pd.read_csv(feedback_path)
+            if {'text', 'label'}.issubset(fb.columns):
+                fb = fb.dropna(subset=['text', 'label'])
+                fb['label'] = fb['label'].astype(int)
+                fb['clean_text'] = fb['text'].apply(clean_text)
+                fb = fb[fb['clean_text'].str.len() > 10]
+                existing = set(df['clean_text'])
+                fb = fb[~fb['clean_text'].isin(existing)]
+                if len(fb) > 0:
+                    df = pd.concat(
+                        [df, fb[['text', 'label', 'clean_text']]],
+                        ignore_index=True
+                    )
+                    print(f"Merged {len(fb)} human-feedback samples from: {feedback_path}")
+                else:
+                    print("Human feedback found, but all samples already exist in dataset.")
+        except Exception as e:
+            print(f"Warning: Could not merge feedback data: {e}")
+
     return df, source_used
 
 

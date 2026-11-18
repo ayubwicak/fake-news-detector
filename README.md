@@ -65,6 +65,15 @@ fake-news-detector/
 │   └── train.csv                        # (Optional) Full Kaggle dataset — auto-detected
 ├── notebooks/
 │   └── exploratory_data_analysis.ipynb  # Executed EDA with plots (word clouds, ROC, confusion matrix)
+├── scripts/
+│   ├── batch_test.py                    # Batch-test the model on a labeled CSV
+│   ├── import_feedback.py               # Bulk-import labeled corrections into feedback.csv
+│   └── tune_model.py                    # GridSearchCV hyperparameter tuning
+├── data/
+│   ├── sample_news.csv                  # Built-in seed dataset (60 labeled articles, balanced)
+│   ├── batch_examples.csv               # Example batch-test set (10 labeled rows)
+│   ├── batch_holdout.csv                # Independent holdout set for honest generalization checks
+│   └── feedback.csv                     # Human feedback (auto-created, git-ignored)
 ├── models/
 │   ├── model.pkl                        # Trained calibrated model
 │   ├── vectorizer.pkl                   # Fitted TF-IDF vectorizer
@@ -172,6 +181,63 @@ The system extracts averaged SVM feature coefficients from the calibrated model 
 - **Negative weight → pushes toward REAL**
 
 These are surfaced in the UI as color-coded pills (🔴 fake indicators, 🟢 real indicators) with their exact weights — giving users transparency into *why* the model decided as it did.
+
+---
+
+## 🔁 Continuous Improvement (Feedback Loop)
+
+A model does **not** learn automatically from its predictions. It improves only when you collect **labeled corrections** and **retrain**. This project implements that full loop:
+
+```
+Predict → Human verifies (UI buttons) → feedback.csv → retrain → better model
+```
+
+### Step 1 — Collect feedback
+
+**Via the web UI:** after each prediction, click:
+- ✅ *Benar* — confirms the prediction
+- ❌ *Sebenarnya Real* / ❌ *Sebenarnya Fake* — records the true label
+
+**Via bulk import** (labeled CSV with `text,label`):
+```bash
+python scripts/import_feedback.py data/batch_examples.csv
+```
+
+**Via API:**
+```bash
+curl -X POST http://127.0.0.1:5000/feedback \
+  -H "Content-Type: application/json" \
+  -d '{"text": "The central bank kept interest rates unchanged.", "label": 0}'
+```
+
+### Step 2 — Retrain
+```bash
+python train_model.py
+# → "Merged N human-feedback samples from: data/feedback.csv"
+```
+
+### Step 3 — Measure honestly (holdout set)
+```bash
+python scripts/batch_test.py data/batch_holdout.csv
+```
+> Always evaluate on examples the model has **never** seen. Re-testing on feedback rows only proves memorization, not generalization.
+
+### Step 4 — Tune hyperparameters
+```bash
+python scripts/tune_model.py --save models/best_params.json
+```
+
+### 💡 What Actually Makes It Smarter
+
+| Action | Impact |
+|--------|--------|
+| Add 10–20 feedback samples | Small, local improvements |
+| **Full Kaggle dataset (~20k rows)** | **Accuracy 92–95% — biggest jump** |
+| Diverse writers/topics/languages | Better generalization |
+| Hyperparameter tuning | +1–3% typically |
+| Upgrade to BERT / IndoBERT | Semantic understanding beyond keyword matching |
+
+> ⚠️ **Language note:** the current TF-IDF vocabulary is English. For Indonesian news, retrain with an Indonesian fake-news dataset (e.g., hoax collections from turnbackhoax.id) or fine-tune **IndoBERT** — otherwise predictions on Indonesian text will be unreliable.
 
 ---
 

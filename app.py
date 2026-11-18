@@ -1,5 +1,6 @@
 import os
 import re
+import csv
 import json
 import joblib
 from flask import Flask, request, jsonify, render_template
@@ -7,6 +8,8 @@ from flask import Flask, request, jsonify, render_template
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+DATA_DIR = os.path.join(BASE_DIR, 'data')
+FEEDBACK_PATH = os.path.join(DATA_DIR, 'feedback.csv')
 
 app = Flask(__name__)
 
@@ -140,13 +143,64 @@ def predict():
     })
 
 
+@app.route('/feedback', methods=['POST'])
+def feedback():
+    """Record human-verified labels for continuous retraining."""
+    data = request.get_json(silent=True)
+    if not data or 'text' not in data or 'label' not in data:
+        return jsonify({'error': 'Parameters "text" and "label" are required.'}), 400
+
+    text = str(data['text']).strip()
+    label = data['label']
+
+    if len(text) < 10:
+        return jsonify({'error': 'Feedback text is too short (minimum 10 characters).'}), 400
+
+    if label not in [0, 1, '0', '1']:
+        return jsonify({'error': 'Label must be 0 (Real) or 1 (Fake).'}), 400
+
+    label = int(label)
+    os.makedirs(DATA_DIR, exist_ok=True)
+    file_exists = os.path.exists(FEEDBACK_PATH)
+
+    try:
+        with open(FEEDBACK_PATH, 'a', newline='', encoding='utf-8') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['text', 'label'])
+            writer.writerow([text, label])
+    except Exception as e:
+        return jsonify({'error': f'Could not save feedback: {e}'}), 500
+
+    try:
+        with open(FEEDBACK_PATH, 'r', encoding='utf-8') as f:
+            total = max(sum(1 for _ in f) - 1, 0)
+    except Exception:
+        total = 1
+
+    return jsonify({
+        'status': 'saved',
+        'message': 'Feedback recorded. Run "python train_model.py" to retrain and improve the model.',
+        'total_feedback_samples': total
+    })
+
+
 @app.route('/health', methods=['GET'])
 def health():
+    feedback_count = 0
+    if os.path.exists(FEEDBACK_PATH):
+        try:
+            with open(FEEDBACK_PATH, 'r', encoding='utf-8') as f:
+                feedback_count = max(sum(1 for _ in f) - 1, 0)
+        except Exception:
+            feedback_count = 0
+
     return jsonify({
         'status': 'healthy',
         'model_loaded': model is not None,
         'vectorizer_loaded': tfidf is not None,
-        'feature_weights_loaded': len(feature_weights) > 0
+        'feature_weights_loaded': len(feature_weights) > 0,
+        'feedback_samples_pending_retrain': feedback_count
     })
 
 
