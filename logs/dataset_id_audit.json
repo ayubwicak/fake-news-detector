@@ -1,0 +1,243 @@
+{
+  "source": "Mendeley p3hfgr5j3m / ICTS 2017 (Pratiwi et al.)",
+  "licence": "CC BY 4.0",
+  "raw": {
+    "label": "raw",
+    "total_rows": 600,
+    "label_counts": {
+      "valid_real_0": 372,
+      "hoax_fake_1": 228
+    },
+    "signal_prevalence_pct": {
+      "url": {
+        "valid_real": {
+          "count": 4,
+          "pct": 1.08
+        },
+        "hoax_fake": {
+          "count": 2,
+          "pct": 0.88
+        }
+      },
+      "meta_hoax": {
+        "valid_real": {
+          "count": 129,
+          "pct": 34.68
+        },
+        "hoax_fake": {
+          "count": 14,
+          "pct": 6.14
+        }
+      },
+      "meta_debunk": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "klarifikasi": {
+        "valid_real": {
+          "count": 39,
+          "pct": 10.48
+        },
+        "hoax_fake": {
+          "count": 19,
+          "pct": 8.33
+        }
+      },
+      "baca_juga": {
+        "valid_real": {
+          "count": 11,
+          "pct": 2.96
+        },
+        "hoax_fake": {
+          "count": 5,
+          "pct": 2.19
+        }
+      },
+      "turnbackhoax": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "detik": {
+        "valid_real": {
+          "count": 13,
+          "pct": 3.49
+        },
+        "hoax_fake": {
+          "count": 4,
+          "pct": 1.75
+        }
+      },
+      "kompas": {
+        "valid_real": {
+          "count": 7,
+          "pct": 1.88
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "tribun": {
+        "valid_real": {
+          "count": 4,
+          "pct": 1.08
+        },
+        "hoax_fake": {
+          "count": 5,
+          "pct": 2.19
+        }
+      }
+    },
+    "valid_real": {
+      "length_median": 1883,
+      "length_min": 543,
+      "length_max": 9618
+    },
+    "hoax_fake": {
+      "length_median": 2097,
+      "length_min": 668,
+      "length_max": 8573
+    },
+    "exact_duplicate_texts": 0,
+    "unique_texts": 600,
+    "conflicting_label_texts": 0
+  },
+  "clean_deduped": {
+    "label": "clean_deduped",
+    "total_rows": 593,
+    "label_counts": {
+      "valid_real_0": 368,
+      "hoax_fake_1": 225
+    },
+    "signal_prevalence_pct": {
+      "url": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "meta_hoax": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "meta_debunk": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "klarifikasi": {
+        "valid_real": {
+          "count": 39,
+          "pct": 10.6
+        },
+        "hoax_fake": {
+          "count": 19,
+          "pct": 8.44
+        }
+      },
+      "baca_juga": {
+        "valid_real": {
+          "count": 4,
+          "pct": 1.09
+        },
+        "hoax_fake": {
+          "count": 1,
+          "pct": 0.44
+        }
+      },
+      "turnbackhoax": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "detik": {
+        "valid_real": {
+          "count": 4,
+          "pct": 1.09
+        },
+        "hoax_fake": {
+          "count": 2,
+          "pct": 0.89
+        }
+      },
+      "kompas": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "tribun": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      }
+    },
+    "valid_real": {
+      "length_median": 1792,
+      "length_min": 523,
+      "length_max": 9398
+    },
+    "hoax_fake": {
+      "length_median": 2022,
+      "length_min": 635,
+      "length_max": 8375
+    },
+    "exact_duplicate_texts": 0,
+    "unique_texts": 593,
+    "conflicting_label_texts": 0
+  },
+  "cleaning": [
+    "remove URLs, HTML, e-mail addresses",
+    "remove portal boilerplate (baca juga, editor, penulis, tags, sumber)",
+    "remove agency markers (detikcom, kompas, tribun, ...)",
+    "remove label-leaking meta words (hoax, hoaks, fake news, debunk, ...)",
+    "lowercase, keep a-z only, collapse whitespace",
+    "deduplicate on cleaned text"
+  ],
+  "label_mapping": {
+    "Valid": 0,
+    "Hoax": 1
+  },
+  "random_state": 42
+}

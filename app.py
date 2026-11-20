@@ -53,6 +53,8 @@ try:
 except Exception as e:
     print(f"Warning: Could not load evaluation metrics: {e}")
 
+from id_preprocessing import detect_language, clean_text as id_clean_text
+
 
 def clean_text(text: str) -> str:
     """Preprocess text: remove URLs, punctuation, and lowercase."""
@@ -115,7 +117,14 @@ def predict():
     if len(raw_text) < 10:
         return jsonify({'error': 'Input text is too short. Please provide at least 10 characters.'}), 400
 
-    cleaned = clean_text(raw_text)
+    # Detect language using lexicon-based approach
+    lang_result = detect_language(raw_text)
+    lang_code = lang_result['code']
+    lang_name = lang_result['name']
+    supported = lang_result['supported']
+
+    # Clean text using Indonesian preprocessing (consistent with training)
+    cleaned = id_clean_text(raw_text)
     if not cleaned:
         return jsonify({'error': 'Input contains only symbols or numbers. Please provide valid text.'}), 400
 
@@ -135,8 +144,18 @@ def predict():
     label = 'Fake' if pred == 1 else 'Real'
     confidence = prob_fake if pred == 1 else prob_real
 
-    # Explainability (XAI)
+    # Explainability (XAI) - get top influential features
     explanation = explain_prediction(cleaned)
+
+    # Language-aware handling
+    language_warning = None
+    if not supported:
+        language_warning = {
+            'code': lang_code,
+            'name': lang_name,
+            'message': f'Prediction for {lang_name} may be less accurate. Model trained on Indonesian news. '
+                       f'Key indicators shown are from Indonesian vocabulary.'
+        }
 
     return jsonify({
         'prediction': label,
@@ -148,7 +167,13 @@ def predict():
         'snippet': raw_text[:140] + ('...' if len(raw_text) > 140 else ''),
         'character_count': len(raw_text),
         'word_count': len(raw_text.split()),
-        'key_influences': explanation
+        'key_influences': explanation,
+        'language_detection': {
+            'code': lang_code,
+            'name': lang_name,
+            'supported': supported,
+            'warning': language_warning['message'] if language_warning else None
+        }
     })
 
 

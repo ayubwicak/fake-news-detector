@@ -1,0 +1,16 @@
+{
+  "language": "id",
+  "labels": {
+    "0": "Valid/Real",
+    "1": "Hoax/Fake"
+  },
+  "model": "CalibratedClassifierCV(LinearSVC)",
+  "vectorizer": "TfidfVectorizer(1-2 grams, max_features=30000)",
+  "dataset": "Mendeley p3hfgr5j3m / ICTS 2017 (Pratiwi et al.)",
+  "dataset_path": "train_id.csv",
+  "trained_at": "2026-11-20T02:16:57.181518+00:00",
+  "n_samples": 593,
+  "n_train": 474,
+  "n_test": 119,
+  "n_features": 21251
+}
