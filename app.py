@@ -113,7 +113,12 @@ def predict():
     if not data or 'text' not in data:
         return jsonify({'error': 'Parameter "text" is required.'}), 400
 
-    raw_text = data.get('text', '').strip()
+    # Validate input type - must be a string
+    raw_text = data.get('text')
+    if not isinstance(raw_text, str):
+        return jsonify({'error': 'Parameter "text" must be a string.'}), 400
+
+    raw_text = raw_text.strip()
     if len(raw_text) < 10:
         return jsonify({'error': 'Input text is too short. Please provide at least 10 characters.'}), 400
 
@@ -184,14 +189,15 @@ def feedback():
     if not data or 'text' not in data or 'label' not in data:
         return jsonify({'error': 'Parameters "text" and "label" are required.'}), 400
 
-    text = str(data['text']).strip()
     label = data['label']
-
-    if len(text) < 10:
-        return jsonify({'error': 'Feedback text is too short (minimum 10 characters).'}), 400
 
     if label not in [0, 1, '0', '1']:
         return jsonify({'error': 'Label must be 0 (Real) or 1 (Fake).'}), 400
+
+    text = str(data['text']).strip()
+
+    if len(text) < 10:
+        return jsonify({'error': 'Feedback text is too short (minimum 10 characters).'}), 400
 
     label = int(label)
     os.makedirs(DATA_DIR, exist_ok=True)
