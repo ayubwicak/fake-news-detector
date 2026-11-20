@@ -3,7 +3,10 @@ import re
 import csv
 import json
 import joblib
+import unicodedata
 from flask import Flask, request, jsonify, render_template
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODELS_DIR = os.path.join(BASE_DIR, 'models')
@@ -12,6 +15,15 @@ DATA_DIR = os.path.join(BASE_DIR, 'data')
 FEEDBACK_PATH = os.path.join(DATA_DIR, 'feedback.csv')
 
 app = Flask(__name__)
+
+# Rate limiting configuration
+# Batasan: 30 request per menit per IP, bisa diatur via env var RATE_LIMIT_PER_MINUTE
+rate_limit = os.environ.get('RATE_LIMIT_PER_MINUTE', '30 per minute')
+limiter = Limiter(
+    app=app,
+    key_func=get_remote_address,
+    default_limits=[rate_limit]
+)
 
 # Load model, vectorizer, and feature weights
 model_path = os.path.join(MODELS_DIR, 'model.pkl')
@@ -98,6 +110,7 @@ def home():
 
 
 @app.route('/metrics', methods=['GET'])
+@limiter.limit("30 per minute")
 def get_metrics():
     if eval_metrics:
         return jsonify(eval_metrics)
@@ -105,6 +118,7 @@ def get_metrics():
 
 
 @app.route('/predict', methods=['POST'])
+@limiter.limit("30 per minute")
 def predict():
     if model is None or tfidf is None:
         return jsonify({'error': 'Model is not trained or loaded yet. Run train_model.py first.'}), 500
@@ -119,6 +133,8 @@ def predict():
         return jsonify({'error': 'Parameter "text" must be a string.'}), 400
 
     raw_text = raw_text.strip()
+    # Normalize Unicode (NFKC): convert full-width chars to standard, remove compatibility
+    raw_text = unicodedata.normalize('NFKC', raw_text)
     if len(raw_text) < 10:
         return jsonify({'error': 'Input text is too short. Please provide at least 10 characters.'}), 400
 
@@ -152,6 +168,11 @@ def predict():
     # Explainability (XAI) - get top influential features
     explanation = explain_prediction(cleaned)
 
+    # If no influential features found, add a note
+    if not explanation:
+        explanation = []
+        explanation_note = "Tidak ada kata kunci yang dikenali pada teks ini."
+
     # Language-aware handling
     language_warning = None
     if not supported:
@@ -173,6 +194,7 @@ def predict():
         'character_count': len(raw_text),
         'word_count': len(raw_text.split()),
         'key_influences': explanation,
+        'key_influences_note': explanation_note if not explanation else None,
         'language_detection': {
             'code': lang_code,
             'name': lang_name,
@@ -183,6 +205,7 @@ def predict():
 
 
 @app.route('/feedback', methods=['POST'])
+@limiter.limit("30 per minute")
 def feedback():
     """Record human-verified labels for continuous retraining."""
     data = request.get_json(silent=True)

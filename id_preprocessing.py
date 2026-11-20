@@ -116,6 +116,7 @@ def normalize_label(value) -> int:
 
 _LANGUAGE_NAMES = {
     "id": "Indonesian",
+    "en": "English",
     "jv": "Javanese",
     "su": "Sundanese",
     "btk": "Batak",
@@ -157,6 +158,20 @@ _LEXICONS: Dict[str, Dict[str, int]] = {
         "sangat": 1, "hanya": 1, "masih": 1, "telah": 1, "para": 1,
         "bagi": 1, "secara": 1, "namun": 1, "tetapi": 1, "sehingga": 1,
         "pemerintah": 1, "indonesia": 1, "kata": 1, "ujar": 1, "menurut": 1,
+        # English news vocabulary (added for language detection)
+        "the": 1, "and": 1, "a": 1, "an": 1, "of": 1, "to": 1, "in": 1, "is": 1,
+        "for": 1, "with": 1, "on": 1, "at": 1, "by": 1, "from": 1, "about": 1,
+        "as": 1, "was": 1, "were": 1, "are": 1, "been": 1, "had": 1, "has": 1,
+        "have": 1, "but": 1, "not": 1, "you": 1, "your": 1, "we": 1, "our": 1,
+        "they": 1, "them": 1, "his": 1, "her": 1, "it": 1, "its": 1, "i": 1,
+        "me": 1, "my": 1, "this": 1, "that": 1, "these": 1, "those": 1,
+        "news": 1, "breaking": 1, "report": 1, "article": 1, "story": 1,
+        "journal": 1, "press": 1, "media": 1, "globe": 1, "world": 1,
+        "can": 1, "will": 1, "should": 1, "would": 1, "could": 1, "may": 1,
+        "might": 1, "must": 1, "do": 1, "does": 1, "did": 1,
+        "that": 1, "what": 1, "when": 1, "where": 1, "why": 1, "how": 1,
+        "there": 1, "here": 1, "then": 1, "than": 1, "some": 1, "any": 1,
+        "no": 1, "all": 1, "only": 1, "own": 1, "same": 1, "so": 1,
     },
 }
 
