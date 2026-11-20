@@ -48,6 +48,49 @@ def test_predict_reports_english_for_english_input(client):
     assert detection['supported'] is True
 
 
+@pytest.mark.parametrize('text, expected_code, expected_name', [
+    ('Aku ora ngerti kowe piye, mboten sampun teka.', 'jv', 'Javanese'),
+    ('Kuring teu nyaho naon eta teh, abdi rek ka pasar.', 'su', 'Sundanese'),
+    ('Ahu do ndang hape molo, roha holong di dongan.', 'btk', 'Batak'),
+])
+def test_detect_language_identifies_regional_languages(text, expected_code, expected_name):
+    result = detect_language(text)
+    assert result['code'] == expected_code
+    assert result['name'] == expected_name
+    assert result['supported'] is False
+    assert result['distinct_hits'][expected_code] >= 2
+
+
+def test_predict_flags_regional_language_with_warning(client):
+    response = client.post('/predict', json={
+        'text': 'Aku ora ngerti kowe piye, mboten sampun teka.'
+    })
+    assert response.status_code == 200
+    detection = response.get_json()['language_detection']
+    assert detection['code'] == 'jv'
+    assert detection['supported'] is False
+    assert detection['warning']
+    assert 'less accurate' in detection['warning']
+
+
+def test_predict_supported_languages_have_no_warning(client):
+    for text, code in [
+        ('Scientists confirmed that the government announced new evidence today.', 'en'),
+        ('Pemerintah Indonesia menyatakan bahwa berita tersebut tidak benar.', 'id'),
+    ]:
+        response = client.post('/predict', json={'text': text})
+        assert response.status_code == 200
+        detection = response.get_json()['language_detection']
+        assert detection['code'] == code
+        assert detection['supported'] is True
+        assert detection['warning'] is None
+
+
+def test_detect_language_rejects_empty_input():
+    assert detect_language('')['code'] == 'unknown'
+    assert detect_language('   !!!   ')['code'] == 'unknown'
+
+
 # --- Bug 2: rate limiting -----------------------------------------------------
 
 def test_predict_is_rate_limited_and_health_stays_open(client, monkeypatch):

@@ -204,14 +204,20 @@ def predict():
             'Coba gunakan kalimat berita yang lebih lengkap.'
         )
 
-    # Language-aware handling
+    # Language-aware handling.  The primary model artifact (models/model.pkl)
+    # is trained primarily on English news; key-influence weights come from its
+    # vocabulary.  Regional-language / unknown inputs are flagged so callers can
+    # show a user-visible warning instead of trusting the score blindly.
     language_warning = None
     if not supported:
         language_warning = {
             'code': lang_code,
             'name': lang_name,
-            'message': f'Prediction for {lang_name} may be less accurate. Model trained on Indonesian news. '
-                       f'Key indicators shown are from Indonesian vocabulary.'
+            'message': (
+                f'Prediction for {lang_name} may be less accurate. '
+                f'The primary model is trained mainly on English news, and key '
+                f'indicators are drawn from that vocabulary.'
+            ),
         }
 
     return jsonify({

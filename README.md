@@ -210,6 +210,11 @@ When no known keyword can be attributed, `key_influences` is empty and
 `key_influences_note` explains why. Full-width input (e.g. `Ｂｒｅａｋｉｎｇ`) is
 normalised with Unicode NFKC before cleaning and language detection.
 
+Language detection uses a lightweight lexicon vote. Supported languages are
+English (`en`) and Indonesian (`id`); Javanese (`jv`), Sundanese (`su`), and
+Batak (`btk`) are detected but flagged as unsupported (`warning` set) because
+the primary model's vocabulary is English. Unknown input returns `code: "unknown"`.
+
 ### `POST /feedback`
 ```bash
 curl -X POST http://127.0.0.1:5000/feedback \
