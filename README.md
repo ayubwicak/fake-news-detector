@@ -212,8 +212,15 @@ normalised with Unicode NFKC before cleaning and language detection.
 
 Language detection uses a lightweight lexicon vote. Supported languages are
 English (`en`) and Indonesian (`id`); Javanese (`jv`), Sundanese (`su`), and
-Batak (`btk`) are detected but flagged as unsupported (`warning` set) because
-the primary model's vocabulary is English. Unknown input returns `code: "unknown"`.
+Batak (`btk`) are detected but flagged as unsupported (`warning` set).
+Unknown input returns `code: "unknown"`.
+
+Per-language model selection — when Indonesian is detected, `/predict` uses the
+Indonesian artefacts under `models/id/` (its own model, vectorizer, feature
+weights, and tuned threshold); English, regional, and unknown inputs fall back
+to the English primary model. The response includes `model_used` (`en` or `id`)
+and the threshold that was applied, so callers can verify which model served the
+prediction.
 
 ### `POST /feedback`
 ```bash

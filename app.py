@@ -36,38 +36,87 @@ def current_rate_limit() -> str:
 def too_many_requests(error):
     return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
 
-# Load model, vectorizer, and feature weights
-model_path = os.path.join(MODELS_DIR, 'model.pkl')
-vec_path = os.path.join(MODELS_DIR, 'vectorizer.pkl')
-weights_path = os.path.join(MODELS_DIR, 'feature_weights.json')
-threshold_path = os.path.join(MODELS_DIR, 'threshold.json')
+# ---------------------------------------------------------------------------
+# Model artefacts: English (primary) and Indonesian (optional regional model).
+# ---------------------------------------------------------------------------
+ID_MODELS_DIR = os.path.join(MODELS_DIR, 'id')
+
+# English (primary) artefacts.
+model_en_path = os.path.join(MODELS_DIR, 'model.pkl')
+vec_en_path = os.path.join(MODELS_DIR, 'vectorizer.pkl')
+weights_en_path = os.path.join(MODELS_DIR, 'feature_weights.json')
+threshold_en_path = os.path.join(MODELS_DIR, 'threshold.json')
+
+# Indonesian artefacts.
+model_id_path = os.path.join(ID_MODELS_DIR, 'model.pkl')
+vec_id_path = os.path.join(ID_MODELS_DIR, 'vectorizer.pkl')
+weights_id_path = os.path.join(ID_MODELS_DIR, 'feature_weights.json')
+threshold_id_path = os.path.join(ID_MODELS_DIR, 'threshold.json')
+
 eval_path = os.path.join(LOGS_DIR, 'evaluation.json')
 
-model = None
-tfidf = None
-feature_weights = {}
+model_en = None
+tfidf_en = None
+feature_weights_en = {}
+model_id = None
+tfidf_id = None
+feature_weights_id = {}
 eval_metrics = None
-DECISION_THRESHOLD = 0.5
+DECISION_THRESHOLD_EN = 0.5
+DECISION_THRESHOLD_ID = 0.5
+
+
+def _load_json(path, default):
+    try:
+        with open(path, 'r') as f:
+            return json.load(f)
+    except Exception:
+        return default
+
 
 try:
-    if os.path.exists(threshold_path):
-        with open(threshold_path, 'r') as f:
-            DECISION_THRESHOLD = float(json.load(f).get('threshold', 0.5))
-        print(f"Decision threshold loaded: {DECISION_THRESHOLD}")
+    if os.path.exists(threshold_en_path):
+        DECISION_THRESHOLD_EN = float(
+            _load_json(threshold_en_path, {}).get('threshold', 0.5))
+        print(f"English decision threshold loaded: {DECISION_THRESHOLD_EN}")
 except Exception as e:
-    print(f"Warning: Could not load threshold: {e}")
+    print(f"Warning: Could not load English threshold: {e}")
 
 try:
-    if os.path.exists(model_path) and os.path.exists(vec_path):
-        model = joblib.load(model_path)
-        tfidf = joblib.load(vec_path)
-        print("Model and vectorizer loaded successfully.")
-    if os.path.exists(weights_path):
-        with open(weights_path, 'r') as f:
-            feature_weights = json.load(f)
-        print(f"Loaded {len(feature_weights)} feature weights for XAI.")
+    if os.path.exists(threshold_id_path):
+        DECISION_THRESHOLD_ID = float(
+            _load_json(threshold_id_path, {}).get('threshold', 0.5))
+        print(f"Indonesian decision threshold loaded: {DECISION_THRESHOLD_ID}")
 except Exception as e:
-    print(f"Error loading model artifacts: {e}")
+    print(f"Warning: Could not load Indonesian threshold: {e}")
+
+try:
+    if os.path.exists(model_en_path) and os.path.exists(vec_en_path):
+        model_en = joblib.load(model_en_path)
+        tfidf_en = joblib.load(vec_en_path)
+        print("English model and vectorizer loaded successfully.")
+    if os.path.exists(weights_en_path):
+        feature_weights_en = _load_json(weights_en_path, {})
+        print(f"Loaded {len(feature_weights_en)} English feature weights for XAI.")
+except Exception as e:
+    print(f"Error loading English model artifacts: {e}")
+
+try:
+    if os.path.exists(model_id_path) and os.path.exists(vec_id_path):
+        model_id = joblib.load(model_id_path)
+        tfidf_id = joblib.load(vec_id_path)
+        print("Indonesian model and vectorizer loaded successfully.")
+    if os.path.exists(weights_id_path):
+        feature_weights_id = _load_json(weights_id_path, {})
+        print(f"Loaded {len(feature_weights_id)} Indonesian feature weights for XAI.")
+except Exception as e:
+    print(f"Error loading Indonesian model artifacts: {e}")
+
+# Backwards-compatible aliases: the default / active artefacts are English.
+model = model_en
+tfidf = tfidf_en
+feature_weights = feature_weights_en
+DECISION_THRESHOLD = DECISION_THRESHOLD_EN
 
 try:
     if os.path.exists(eval_path):
@@ -106,8 +155,15 @@ def parse_feedback_label(value):
     return None
 
 
-def explain_prediction(cleaned_text: str, top_n: int = 5):
-    """Identify top influential keywords in input using model weights (XAI)."""
+def explain_prediction(cleaned_text: str, top_n: int = 5, weights: dict | None = None):
+    """Identify top influential keywords in input using model weights (XAI).
+
+    ``weights`` defaults to the module-level ``feature_weights`` (English) so
+    existing callers keep working; callers serving another language pass that
+    language's feature weights instead.
+    """
+    if weights is None:
+        weights = feature_weights
     words = cleaned_text.split()
     matched_features = []
 
@@ -118,8 +174,8 @@ def explain_prediction(cleaned_text: str, top_n: int = 5):
         candidates.add(f"{words[i]} {words[i+1]}")
 
     for candidate in candidates:
-        if candidate in feature_weights:
-            weight = feature_weights[candidate]
+        if candidate in weights:
+            weight = weights[candidate]
             matched_features.append({
                 'token': candidate,
                 'weight': round(float(weight), 4),
@@ -177,26 +233,42 @@ def predict():
     if not cleaned:
         return jsonify({'error': 'Input contains only symbols or numbers. Please provide valid text.'}), 400
 
+    # Select per-language artefacts: Indonesian text uses the Indonesian model,
+    # everything else (English, regional, unknown) falls back to the English
+    # primary model.  This keeps predictions in-domain while degrading
+    # gracefully when the Indonesian artefacts are missing.
+    model_used = 'en'
+    active_model = model_en
+    active_tfidf = tfidf_en
+    active_weights = feature_weights_en
+    active_threshold = DECISION_THRESHOLD_EN
+    if lang_code == 'id' and model_id is not None and tfidf_id is not None:
+        model_used = 'id'
+        active_model = model_id
+        active_tfidf = tfidf_id
+        active_weights = feature_weights_id
+        active_threshold = DECISION_THRESHOLD_ID
+
     # Vectorize
-    vec = tfidf.transform([cleaned])
+    vec = active_tfidf.transform([cleaned])
 
     # Probabilities (calibrated)
-    if hasattr(model, 'predict_proba'):
-        proba = model.predict_proba(vec)[0]
+    if hasattr(active_model, 'predict_proba'):
+        proba = active_model.predict_proba(vec)[0]
         prob_real = float(proba[0]) * 100
         prob_fake = float(proba[1]) * 100
     else:
         prob_real, prob_fake = 0.0, 100.0
 
     # Decision uses the tuned threshold (optimized on validation split)
-    pred = 1 if (prob_fake / 100.0) >= DECISION_THRESHOLD else 0
+    pred = 1 if (prob_fake / 100.0) >= active_threshold else 0
     label = 'Fake' if pred == 1 else 'Real'
     confidence = prob_fake if pred == 1 else prob_real
 
     # Explainability (XAI) - get top influential features.  When the input has
     # no vocabulary known to the model, surface an explicit note instead of
     # silently returning an empty list.
-    explanation = explain_prediction(cleaned)
+    explanation = explain_prediction(cleaned, weights=active_weights)
     explanation_note = None
     if not explanation:
         explanation_note = (
@@ -226,7 +298,8 @@ def predict():
         'confidence': round(confidence, 2),
         'probability_real': round(prob_real, 2),
         'probability_fake': round(prob_fake, 2),
-        'decision_threshold': DECISION_THRESHOLD,
+        'decision_threshold': round(active_threshold, 4),
+        'model_used': model_used,
         'snippet': raw_text[:140] + ('...' if len(raw_text) > 140 else ''),
         'character_count': len(raw_text),
         'word_count': len(raw_text.split()),
@@ -300,6 +373,20 @@ def health():
         'vectorizer_loaded': tfidf is not None,
         'feature_weights_loaded': len(feature_weights) > 0,
         'decision_threshold': DECISION_THRESHOLD,
+        'models': {
+            'en': {
+                'loaded': model_en is not None,
+                'vectorizer_loaded': tfidf_en is not None,
+                'feature_weights_loaded': len(feature_weights_en) > 0,
+                'decision_threshold': DECISION_THRESHOLD_EN,
+            },
+            'id': {
+                'loaded': model_id is not None,
+                'vectorizer_loaded': tfidf_id is not None,
+                'feature_weights_loaded': len(feature_weights_id) > 0,
+                'decision_threshold': DECISION_THRESHOLD_ID,
+            },
+        },
         'feedback_samples_pending_retrain': feedback_count
     })
 

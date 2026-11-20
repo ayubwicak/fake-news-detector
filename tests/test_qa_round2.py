@@ -86,6 +86,59 @@ def test_predict_supported_languages_have_no_warning(client):
         assert detection['warning'] is None
 
 
+def test_predict_uses_indonesian_model_for_indonesian_text(client):
+    response = client.post('/predict', json={
+        'text': 'Pemerintah Indonesia menyatakan bahwa berita tersebut tidak benar dan menyesatkan masyarakat.'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['model_used'] == 'id'
+    assert data['language_detection']['code'] == 'id'
+    assert data['language_detection']['supported'] is True
+
+
+def test_predict_uses_english_model_for_english_text(client):
+    response = client.post('/predict', json={
+        'text': 'Scientists confirmed that the government announced new evidence today.'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['model_used'] == 'en'
+    assert data['language_detection']['code'] == 'en'
+
+
+def test_predict_uses_english_model_for_regional_text(client):
+    response = client.post('/predict', json={
+        'text': 'Aku ora ngerti kowe piye, mboten sampun teka.'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    # Regional languages fall back to the English primary model.
+    assert data['model_used'] == 'en'
+    assert data['language_detection']['code'] == 'jv'
+    assert data['language_detection']['supported'] is False
+
+
+def test_predict_uses_indonesian_model_for_fullwidth_indonesian_text(client):
+    text = 'Ｐｅｍｅｒｉｎｔａｈ　Ｉｎｄｏｎｅｓｉａ　ｍｅｎｙａｔｕｋａｎ　ｂｅｒｉｔａ　ｔｉｄａｋ　ｂｅｎａｒ．'
+    response = client.post('/predict', json={'text': text})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['model_used'] == 'id'
+    assert data['language_detection']['code'] == 'id'
+
+
+def test_health_reports_both_models(client):
+    response = client.get('/health')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['status'] == 'healthy'
+    assert 'models' in data
+    assert data['models']['en']['loaded'] is True
+    assert data['models']['en']['decision_threshold'] > 0
+    assert 'id' in data['models']
+
+
 def test_detect_language_rejects_empty_input():
     assert detect_language('')['code'] == 'unknown'
     assert detect_language('   !!!   ')['code'] == 'unknown'
