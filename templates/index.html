@@ -366,7 +366,10 @@
                     keywordPills.appendChild(pill);
                 });
             } else {
-                keywordPills.innerHTML = '<span class="text-xs text-slate-500 italic">No strong polar keywords detected in vocabulary.</span>';
+                const emptyNote = document.createElement('span');
+                emptyNote.className = 'text-xs text-slate-500 italic';
+                emptyNote.textContent = data.key_influences_note || 'No strong polar keywords detected in vocabulary.';
+                keywordPills.appendChild(emptyNote);
             }
 
             lastAnalyzed = { text: newsInput.value.trim(), predictionCode: data.label_code };

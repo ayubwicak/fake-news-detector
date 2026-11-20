@@ -16,14 +16,25 @@ FEEDBACK_PATH = os.path.join(DATA_DIR, 'feedback.csv')
 
 app = Flask(__name__)
 
-# Rate limiting configuration
-# Batasan: 30 request per menit per IP, bisa diatur via env var RATE_LIMIT_PER_MINUTE
-rate_limit = os.environ.get('RATE_LIMIT_PER_MINUTE', '30 per minute')
-limiter = Limiter(
-    app=app,
-    key_func=get_remote_address,
-    default_limits=[rate_limit]
+# Rate limiting: 30 requests/minute/IP by default, overridable via env var.
+# A callable limit value allows tests to lower the limit without re-importing.
+RATE_LIMIT = os.environ.get('RATE_LIMIT_PER_MINUTE', '30 per minute')
+app.config['RATE_LIMIT'] = RATE_LIMIT
+app.config.setdefault(
+    'RATELIMIT_STORAGE_URI',
+    os.environ.get('RATE_LIMIT_STORAGE_URI', 'memory://'),
 )
+limiter = Limiter(app=app, key_func=get_remote_address)
+
+
+def current_rate_limit() -> str:
+    """Return the active rate limit (config first, env/default as fallback)."""
+    return app.config.get('RATE_LIMIT', RATE_LIMIT)
+
+
+@app.errorhandler(429)
+def too_many_requests(error):
+    return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
 
 # Load model, vectorizer, and feature weights
 model_path = os.path.join(MODELS_DIR, 'model.pkl')
@@ -72,10 +83,27 @@ def clean_text(text: str) -> str:
     """Preprocess text: remove URLs, punctuation, and lowercase."""
     if not isinstance(text, str):
         return ""
+    text = unicodedata.normalize('NFKC', text)
     text = re.sub(r'http\S+|www\.\S+', '', text)
     text = re.sub(r'[^a-zA-Z\s]', ' ', text)
     text = re.sub(r'\s+', ' ', text)
     return text.lower().strip()
+
+
+def parse_feedback_label(value):
+    """Strictly parse a feedback label.
+
+    Accept only 0/1 integers or the strings '0'/'1'.  Booleans and floats are
+    rejected even though ``True == 1`` and ``1.0 == 1`` in Python, because
+    silently accepting them makes the saved label ambiguous.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int) and value in (0, 1):
+        return value
+    if isinstance(value, str) and value.strip() in {'0', '1'}:
+        return int(value.strip())
+    return None
 
 
 def explain_prediction(cleaned_text: str, top_n: int = 5):
@@ -110,7 +138,7 @@ def home():
 
 
 @app.route('/metrics', methods=['GET'])
-@limiter.limit("30 per minute")
+@limiter.limit(current_rate_limit)
 def get_metrics():
     if eval_metrics:
         return jsonify(eval_metrics)
@@ -118,7 +146,7 @@ def get_metrics():
 
 
 @app.route('/predict', methods=['POST'])
-@limiter.limit("30 per minute")
+@limiter.limit(current_rate_limit)
 def predict():
     if model is None or tfidf is None:
         return jsonify({'error': 'Model is not trained or loaded yet. Run train_model.py first.'}), 500
@@ -165,13 +193,16 @@ def predict():
     label = 'Fake' if pred == 1 else 'Real'
     confidence = prob_fake if pred == 1 else prob_real
 
-    # Explainability (XAI) - get top influential features
+    # Explainability (XAI) - get top influential features.  When the input has
+    # no vocabulary known to the model, surface an explicit note instead of
+    # silently returning an empty list.
     explanation = explain_prediction(cleaned)
-
-    # If no influential features found, add a note
+    explanation_note = None
     if not explanation:
-        explanation = []
-        explanation_note = "Tidak ada kata kunci yang dikenali pada teks ini."
+        explanation_note = (
+            'Tidak ada kata kunci yang dikenali pada teks ini. '
+            'Coba gunakan kalimat berita yang lebih lengkap.'
+        )
 
     # Language-aware handling
     language_warning = None
@@ -194,7 +225,7 @@ def predict():
         'character_count': len(raw_text),
         'word_count': len(raw_text.split()),
         'key_influences': explanation,
-        'key_influences_note': explanation_note if not explanation else None,
+        'key_influences_note': explanation_note,
         'language_detection': {
             'code': lang_code,
             'name': lang_name,
@@ -205,24 +236,23 @@ def predict():
 
 
 @app.route('/feedback', methods=['POST'])
-@limiter.limit("30 per minute")
+@limiter.limit(current_rate_limit)
 def feedback():
     """Record human-verified labels for continuous retraining."""
     data = request.get_json(silent=True)
     if not data or 'text' not in data or 'label' not in data:
         return jsonify({'error': 'Parameters "text" and "label" are required.'}), 400
 
-    label = data['label']
-
-    if label not in [0, 1, '0', '1']:
+    label = parse_feedback_label(data['label'])
+    if label is None:
         return jsonify({'error': 'Label must be 0 (Real) or 1 (Fake).'}), 400
 
     text = str(data['text']).strip()
+    text = unicodedata.normalize('NFKC', text)
 
     if len(text) < 10:
         return jsonify({'error': 'Feedback text is too short (minimum 10 characters).'}), 400
 
-    label = int(label)
     os.makedirs(DATA_DIR, exist_ok=True)
     file_exists = os.path.exists(FEEDBACK_PATH)
 

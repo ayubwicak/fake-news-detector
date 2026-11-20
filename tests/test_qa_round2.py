@@ -1,0 +1,165 @@
+"""Regression tests for the QA round-2 bug fixes."""
+
+import os
+import sys
+
+import pytest
+
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, BASE_DIR)
+
+import app as app_module
+from app import app
+from id_preprocessing import clean_text as id_clean_text, detect_language
+
+
+@pytest.fixture
+def client():
+    app.config['TESTING'] = True
+    # Rate limits are verified explicitly in their own test.
+    app.config['RATELIMIT_ENABLED'] = False
+    app_module.limiter.reset()
+    with app.test_client() as test_client:
+        yield test_client
+    app_module.limiter.reset()
+
+
+# --- Bug 1: language detection ------------------------------------------------
+
+@pytest.mark.parametrize('text, expected_code', [
+    ('NASA scientists confirmed today that the exploratory rover has landed on Mars.', 'en'),
+    ('Pemerintah Indonesia mengumumkan bahwa berita tersebut tidak benar dan menyesatkan.', 'id'),
+])
+def test_detect_language_identifies_supported_languages(text, expected_code):
+    result = detect_language(text)
+    assert result['code'] == expected_code
+    assert result['name'] in ('English', 'Indonesian')
+    assert result['supported'] is True
+
+
+def test_predict_reports_english_for_english_input(client):
+    response = client.post('/predict', json={
+        'text': 'Scientists confirmed that the government announced new evidence today.'
+    })
+    assert response.status_code == 200
+    detection = response.get_json()['language_detection']
+    assert detection['code'] == 'en'
+    assert detection['name'] == 'English'
+    assert detection['supported'] is True
+
+
+# --- Bug 2: rate limiting -----------------------------------------------------
+
+def test_predict_is_rate_limited_and_health_stays_open(client, monkeypatch):
+    monkeypatch.setitem(app.config, 'RATELIMIT_ENABLED', True)
+    monkeypatch.setitem(app.config, 'RATE_LIMIT', '2 per minute')
+    app_module.limiter.reset()
+    payload = {'text': 'A valid news article used to verify the rate limit.'}
+
+    try:
+        for _ in range(2):
+            assert client.post('/predict', json=payload).status_code == 200
+
+        blocked = client.post('/predict', json=payload)
+        assert blocked.status_code == 429
+        assert 'error' in blocked.get_json()
+
+        # /health is deliberately exempt so uptime monitors are never blocked.
+        for _ in range(5):
+            assert client.get('/health').status_code == 200
+    finally:
+        app_module.limiter.reset()
+
+
+def test_rate_limit_uses_configured_value():
+    assert isinstance(app.config['RATE_LIMIT'], str)
+    assert 'minute' in app.config['RATE_LIMIT']
+
+
+# --- Bug 3: key_influences ----------------------------------------------------
+
+def test_predict_returns_influences_for_known_vocabulary(client):
+    response = client.post('/predict', json={
+        'text': 'Anonymous whistleblowers claim secret alien bases under polar ice.'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['key_influences']
+    assert data['key_influences_note'] is None
+
+
+def test_predict_explains_empty_influences(client):
+    response = client.post('/predict', json={
+        'text': 'qxztpl wrrrmb qzxvbn blorb flimflam zzzxqq'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['key_influences'] == []
+    assert data['key_influences_note']
+
+
+# --- Bug 4: full-width normalisation -----------------------------------------
+
+def test_clean_text_normalises_fullwidth_characters():
+    text = 'Ｂｒｅａｋｉｎｇ　Ｎｅｗｓ：　Ｐｒｅｓｉｄｅｎｔ　ｓｐｏｋｅ　ｔｏｄａｙ．'
+    assert id_clean_text(text) == 'breaking news president spoke today'
+
+
+def test_detect_language_normalises_fullwidth_characters():
+    text = 'Ｐｅｍｅｒｉｎｔａｈ　Ｉｎｄｏｎｅｓｉａ　ｍｅｎｇｕｍｕｍｋａｎ　ｂｅｒｉｔａ　ｔｅｒｓｅｂｕｔ．'
+    assert detect_language(text)['code'] == 'id'
+
+
+def test_predict_accepts_fullwidth_text(client):
+    text = 'Ｂｒｅａｋｉｎｇ　ｎｅｗｓ：　ｓｃｉｅｎｔｉｓｔｓ　ｃｏｎｆｉｒｍｅｄ　ｔｈａｔ　ｔｈｅ　ｒｏｖｅｒ　ｌａｎｄｅｄ　ｔｏｄａｙ．'
+    response = client.post('/predict', json={'text': text})
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['language_detection']['code'] == 'en'
+    assert data['key_influences']
+
+
+# --- Bug 5: feedback label validation ----------------------------------------
+
+@pytest.mark.parametrize('label', [True, False, 1.0, 0.0, 2, -1, '2', 'yes', None, [], {}])
+def test_feedback_rejects_invalid_labels(client, tmp_path, monkeypatch, label):
+    monkeypatch.setattr(app_module, 'FEEDBACK_PATH', str(tmp_path / 'feedback.csv'))
+    response = client.post('/feedback', json={
+        'text': 'A perfectly valid news article submitted as human feedback.',
+        'label': label,
+    })
+    assert response.status_code == 400
+    assert 'Label must be 0 (Real) or 1 (Fake).' in response.get_json()['error']
+
+
+@pytest.mark.parametrize('label, expected', [(0, 0), (1, 1), ('0', 0), (' 1 ', 1)])
+def test_feedback_accepts_valid_labels(client, tmp_path, monkeypatch, label, expected):
+    feedback_file = tmp_path / 'feedback.csv'
+    monkeypatch.setattr(app_module, 'FEEDBACK_PATH', str(feedback_file))
+    response = client.post('/feedback', json={
+        'text': 'A perfectly valid news article submitted as human feedback.',
+        'label': label,
+    })
+    assert response.status_code == 200
+    rows = feedback_file.read_text(encoding='utf-8').strip().splitlines()
+    assert rows[-1].endswith(f'{expected}')
+
+
+def test_feedback_normalises_fullwidth_text(client, tmp_path, monkeypatch):
+    feedback_file = tmp_path / 'feedback.csv'
+    monkeypatch.setattr(app_module, 'FEEDBACK_PATH', str(feedback_file))
+    response = client.post('/feedback', json={
+        'text': 'Ｐｒｅｓｉｄｅｎｔ　ａｎｎｏｕｎｃｅｄ　ｔｈｅ　ｎｅｗ　ｐｏｌｉｃｙ　ｔｏｄａｙ．',
+        'label': '1',
+    })
+    assert response.status_code == 200
+    assert 'president announced the new policy today' in feedback_file.read_text(encoding='utf-8').lower()
+
+
+# --- Regression: BUG-001 -----------------------------------------------------
+
+@pytest.mark.parametrize('value', [None, True, 42, ['news'], {'text': 'news'}])
+def test_predict_rejects_non_string_text(client, value):
+    response = client.post('/predict', json={'text': value})
+    assert response.status_code == 400
+    assert 'must be a string' in response.get_json()['error']

@@ -198,9 +198,17 @@ curl -X POST http://127.0.0.1:5000/predict \
   "key_influences": [
     {"token": "claim",   "weight": 0.5501, "indicator": "fake"},
     {"token": "secret",  "weight": 0.4350, "indicator": "fake"}
-  ]
+  ],
+  "key_influences_note": null,
+  "language_detection": {
+    "code": "en", "name": "English", "supported": true, "warning": null
+  }
 }
 ```
+
+When no known keyword can be attributed, `key_influences` is empty and
+`key_influences_note` explains why. Full-width input (e.g. `Ｂｒｅａｋｉｎｇ`) is
+normalised with Unicode NFKC before cleaning and language detection.
 
 ### `POST /feedback`
 ```bash
@@ -216,6 +224,16 @@ curl -X POST http://127.0.0.1:5000/feedback \
 | `/` | GET | Web dashboard |
 | `/metrics` | GET | Evaluation metrics + methodology flags |
 | `/health` | GET | Health, threshold, pending feedback count |
+
+**Rate limiting** — `/predict`, `/feedback`, and `/metrics` allow 30 requests
+per minute per IP by default (`429` with a JSON error when exceeded). Override
+with `RATE_LIMIT_PER_MINUTE` (e.g. `10 per minute`) and set
+`RATE_LIMIT_STORAGE_URI` to a shared backend (e.g. Redis) for multi-worker
+deployments. `/` and `/health` are deliberately unlimited for UI and uptime
+checks.
+
+`POST /feedback` only accepts labels `0`/`1` (numbers or strings); booleans and
+other values are rejected with `400`.
 
 ---
 

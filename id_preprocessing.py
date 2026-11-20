@@ -17,6 +17,7 @@ Design notes
 from __future__ import annotations
 
 import re
+import unicodedata
 from typing import Dict
 
 try:  # Sastrawi is optional at import time so the module stays testable.
@@ -83,6 +84,10 @@ def clean_text(text: str) -> str:
     if not isinstance(text, str):
         return ""
 
+    # Fold full-width letters/digits (e.g. "Ｂｒｅａｋｉｎｇ") and other
+    # compatibility characters before regex cleaning, so training and serving
+    # see the same token stream.
+    text = unicodedata.normalize("NFKC", text)
     text = _URL_RE.sub(" ", text)
     text = _HTML_RE.sub(" ", text)
     text = _EMAIL_RE.sub(" ", text)
@@ -111,7 +116,7 @@ def normalize_label(value) -> int:
 # Lightweight language detection (heuristic, explainable)
 # ---------------------------------------------------------------------------
 # This is deliberately NOT a trained language ID model.  It is a transparent
-# lexicon vote that distinguishes Indonesian from three major regional
+# lexicon vote that distinguishes Indonesian, English, and three major regional
 # languages, so the API can warn users when a prediction is out of domain.
 
 _LANGUAGE_NAMES = {
@@ -158,20 +163,32 @@ _LEXICONS: Dict[str, Dict[str, int]] = {
         "sangat": 1, "hanya": 1, "masih": 1, "telah": 1, "para": 1,
         "bagi": 1, "secara": 1, "namun": 1, "tetapi": 1, "sehingga": 1,
         "pemerintah": 1, "indonesia": 1, "kata": 1, "ujar": 1, "menurut": 1,
-        # English news vocabulary (added for language detection)
-        "the": 1, "and": 1, "a": 1, "an": 1, "of": 1, "to": 1, "in": 1, "is": 1,
-        "for": 1, "with": 1, "on": 1, "at": 1, "by": 1, "from": 1, "about": 1,
-        "as": 1, "was": 1, "were": 1, "are": 1, "been": 1, "had": 1, "has": 1,
-        "have": 1, "but": 1, "not": 1, "you": 1, "your": 1, "we": 1, "our": 1,
-        "they": 1, "them": 1, "his": 1, "her": 1, "it": 1, "its": 1, "i": 1,
-        "me": 1, "my": 1, "this": 1, "that": 1, "these": 1, "those": 1,
-        "news": 1, "breaking": 1, "report": 1, "article": 1, "story": 1,
-        "journal": 1, "press": 1, "media": 1, "globe": 1, "world": 1,
-        "can": 1, "will": 1, "should": 1, "would": 1, "could": 1, "may": 1,
-        "might": 1, "must": 1, "do": 1, "does": 1, "did": 1,
-        "that": 1, "what": 1, "when": 1, "where": 1, "why": 1, "how": 1,
-        "there": 1, "here": 1, "then": 1, "than": 1, "some": 1, "any": 1,
-        "no": 1, "all": 1, "only": 1, "own": 1, "same": 1, "so": 1,
+        "bahwa": 1, "benar": 1, "berita": 1, "mengumumkan": 1, "dia": 1,
+        "beliau": 1, "polisi": 1, "kepolisian": 1, "masyarakat": 1,
+        "wilayah": 1, "kota": 1, "provinsi": 1, "dikatakan": 1,
+    },
+    # English must have its own lexicon: adding these words to the Indonesian
+    # bucket made every English article look like Indonesian (or "unknown").
+    "en": {
+        "the": 2, "and": 1, "of": 1, "to": 1, "in": 1, "is": 2, "are": 2,
+        "was": 2, "were": 2, "be": 1, "been": 1, "being": 1, "for": 1,
+        "with": 1, "on": 1, "at": 1, "by": 1, "from": 1, "as": 1, "that": 2,
+        "this": 2, "these": 2, "those": 2, "it": 1, "its": 1, "he": 1,
+        "she": 1, "they": 2, "them": 1, "their": 1, "his": 1, "her": 1,
+        "we": 1, "our": 1, "you": 1, "your": 1, "has": 2, "have": 1,
+        "had": 1, "do": 1, "does": 1, "did": 1, "will": 1, "would": 1,
+        "should": 1, "could": 1, "can": 1, "may": 1, "might": 1, "must": 1,
+        "not": 1, "no": 1, "but": 1, "if": 1, "than": 1, "then": 1,
+        "into": 1, "about": 1, "after": 1, "before": 1, "over": 1,
+        "between": 1, "out": 1, "more": 1, "most": 1, "other": 1,
+        "some": 1, "such": 1, "only": 1, "also": 1, "there": 1, "here": 1,
+        "what": 1, "when": 1, "where": 1, "why": 1, "how": 1, "who": 1,
+        "news": 2, "breaking": 2, "report": 1, "reported": 1, "reports": 1,
+        "article": 1, "story": 1, "press": 1, "media": 1, "world": 1,
+        "says": 1, "said": 1, "claims": 1, "claimed": 1, "confirmed": 1,
+        "announced": 1, "according": 1, "officials": 1, "government": 1,
+        "president": 1, "minister": 1, "scientists": 1, "researchers": 1,
+        "experts": 1, "today": 1, "yesterday": 1,
     },
 }
 
@@ -181,39 +198,53 @@ _WORD_RE = re.compile(r"[a-zA-Z]+")
 def detect_language(text: str) -> dict:
     """Return a transparent lexicon-based language guess.
 
-    The result includes per-language scores and a confidence flag.  Regional
-    languages are reported honestly as unsupported by the Indonesian model.
+    The result includes per-language scores and distinct marker counts.
+    English and Indonesian are supported; regional languages are reported
+    honestly as out of domain.  Input is NFKC-normalised first so full-width
+    text is detected the same way as ordinary text.
     """
-    tokens = _WORD_RE.findall((text or "").lower())
+    normalized = unicodedata.normalize("NFKC", text) if isinstance(text, str) else ""
+    tokens = _WORD_RE.findall(normalized.lower())
     if not tokens:
         return {
             "code": "unknown",
             "name": _LANGUAGE_NAMES["unknown"],
             "supported": False,
             "scores": {},
+            "distinct_hits": {},
             "method": "lexicon-vote",
         }
 
-    scores = {}
+    scores: Dict[str, int] = {}
+    distinct_hits: Dict[str, int] = {}
     for lang, lexicon in _LEXICONS.items():
-        scores[lang] = sum(lexicon.get(tok, 0) for tok in tokens)
+        hits = {tok for tok in tokens if tok in lexicon}
+        distinct_hits[lang] = len(hits)
+        scores[lang] = sum(lexicon[tok] for tok in tokens if tok in lexicon)
 
-    # Regional language wins only with at least two distinct marker hits.
-    regional = {k: v for k, v in scores.items() if k != "id"}
-    best_regional, best_regional_score = max(regional.items(), key=lambda kv: kv[1])
-    distinct_hits = len({tok for tok in tokens if tok in _LEXICONS[best_regional]})
+    def _qualified(lang: str) -> bool:
+        return distinct_hits[lang] >= 2 and scores[lang] >= 2
 
-    if distinct_hits >= 2 and best_regional_score >= scores["id"]:
+    # Regional languages need at least two distinct markers and must beat the
+    # national languages, otherwise common words such as "aku"/"di" would
+    # mislabel ordinary Indonesian text as Javanese or Batak.
+    regional = ["jv", "su", "btk"]
+    primary = ["id", "en"]
+    best_regional = max(regional, key=lambda l: (scores[l], distinct_hits[l]))
+    best_primary = max(primary, key=lambda l: (scores[l], distinct_hits[l]))
+
+    if _qualified(best_regional) and scores[best_regional] >= scores[best_primary]:
         code = best_regional
-    elif scores["id"] >= 2:
-        code = "id"
+    elif _qualified(best_primary):
+        code = best_primary
     else:
         code = "unknown"
 
     return {
         "code": code,
         "name": _LANGUAGE_NAMES[code],
-        "supported": code == "id",
+        "supported": code in primary,
         "scores": scores,
+        "distinct_hits": distinct_hits,
         "method": "lexicon-vote",
     }
