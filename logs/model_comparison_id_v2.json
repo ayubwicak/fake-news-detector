@@ -1,0 +1,154 @@
+{
+  "generated_at": "2026-11-21T04:53:54.711663+00:00",
+  "train_source": "HF/Rifky/indonesian-hoax-news (out-of-source train)",
+  "test_source": "Mendeley/ICTS-2017 (out-of-source test)",
+  "holdout_source": "manual_holdout",
+  "n_train": 7940,
+  "n_test": 547,
+  "n_holdout": 103,
+  "threshold_valid": 0.3,
+  "threshold_fake": 0.7,
+  "results": {
+    "test_out_of_source": [
+      {
+        "accuracy": 0.6288848263254113,
+        "roc_auc": 0.6409856343650727,
+        "brier": 0.31865049471838836,
+        "gray_zone_pct": 0.10420475319926874,
+        "fpr": 0.0658682634730539,
+        "f1_valid": 0.75453446191052,
+        "recall_valid": 0.9341317365269461,
+        "precision_valid": 0.6328600405679513,
+        "f1_hoax": 0.2397003745318352,
+        "recall_hoax": 0.15023474178403756,
+        "precision_hoax": 0.5925925925925926,
+        "confusion_matrix": [
+          [
+            312,
+            22
+          ],
+          [
+            181,
+            32
+          ]
+        ],
+        "name": "TF-IDF + LogisticRegression",
+        "infer_ms_per_sample": 0.0099
+      },
+      {
+        "accuracy": 0.6014625228519196,
+        "roc_auc": 0.5632467459447302,
+        "brier": 0.25086117265069513,
+        "gray_zone_pct": 0.5758683729433273,
+        "fpr": 0.17664670658682635,
+        "f1_valid": 0.7161458333333334,
+        "recall_valid": 0.8233532934131736,
+        "precision_valid": 0.6336405529953917,
+        "f1_hoax": 0.3312883435582822,
+        "recall_hoax": 0.2535211267605634,
+        "precision_hoax": 0.4778761061946903,
+        "confusion_matrix": [
+          [
+            275,
+            59
+          ],
+          [
+            159,
+            54
+          ]
+        ],
+        "name": "Sentence-Transformer + LogisticRegression",
+        "infer_ms_per_sample": 50.6823
+      },
+      {
+        "name": "IndoBERT (fine-tuned)",
+        "accuracy": null,
+        "roc_auc": null,
+        "brier": null,
+        "gray_zone_pct": null,
+        "fpr": null,
+        "f1_hoax": null,
+        "recall_hoax": null,
+        "precision_hoax": null,
+        "f1_valid": null,
+        "recall_valid": null,
+        "precision_valid": null,
+        "confusion_matrix": null,
+        "infer_ms_per_sample": null,
+        "skipped": true,
+        "note": "CPU fine-tuning infeasible within time budget"
+      }
+    ],
+    "holdout_v2": [
+      {
+        "accuracy": 0.5533980582524272,
+        "roc_auc": 0.7189168573607934,
+        "brier": 0.34427239983656854,
+        "gray_zone_pct": 0.1262135922330097,
+        "fpr": 0.03508771929824561,
+        "f1_valid": 0.7051282051282052,
+        "recall_valid": 0.9649122807017544,
+        "precision_valid": 0.5555555555555556,
+        "f1_hoax": 0.08,
+        "recall_hoax": 0.043478260869565216,
+        "precision_hoax": 0.5,
+        "confusion_matrix": [
+          [
+            55,
+            2
+          ],
+          [
+            44,
+            2
+          ]
+        ],
+        "name": "TF-IDF + LogisticRegression",
+        "infer_ms_per_sample": 0.0421
+      },
+      {
+        "accuracy": 0.6796116504854369,
+        "roc_auc": 0.761632341723875,
+        "brier": 0.19771751982368968,
+        "gray_zone_pct": 0.5242718446601942,
+        "fpr": 0.24561403508771928,
+        "f1_valid": 0.7226890756302521,
+        "recall_valid": 0.7543859649122807,
+        "precision_valid": 0.6935483870967742,
+        "f1_hoax": 0.6206896551724138,
+        "recall_hoax": 0.5869565217391305,
+        "precision_hoax": 0.6585365853658537,
+        "confusion_matrix": [
+          [
+            43,
+            14
+          ],
+          [
+            19,
+            27
+          ]
+        ],
+        "name": "Sentence-Transformer + LogisticRegression",
+        "infer_ms_per_sample": 25.3492
+      },
+      {
+        "name": "IndoBERT (fine-tuned)",
+        "accuracy": null,
+        "roc_auc": null,
+        "brier": null,
+        "gray_zone_pct": null,
+        "fpr": null,
+        "f1_hoax": null,
+        "recall_hoax": null,
+        "precision_hoax": null,
+        "f1_valid": null,
+        "recall_valid": null,
+        "precision_valid": null,
+        "confusion_matrix": null,
+        "infer_ms_per_sample": null,
+        "skipped": true,
+        "note": "CPU fine-tuning infeasible within time budget"
+      }
+    ]
+  },
+  "best_by_holdout_accuracy": "Sentence-Transformer + LogisticRegression"
+}
