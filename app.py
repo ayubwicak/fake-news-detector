@@ -796,9 +796,12 @@ def predict():
             'error': 'Parameter "text" harus berupa teks (must be a string).'
         }), 400
 
+    # Validate input type - must be a string
+    raw_text = data.get('text')
+    if not isinstance(raw_text, str):
+        return jsonify({'error': 'Parameter "text" must be a string.'}), 400
+
     raw_text = raw_text.strip()
-    # Normalize Unicode (NFKC): convert full-width chars to standard, remove compatibility
-    raw_text = unicodedata.normalize('NFKC', raw_text)
     if len(raw_text) < 10:
         return jsonify({'error': 'Teks terlalu pendek. Masukkan minimal 10 karakter.'}), 400
 
@@ -962,16 +965,17 @@ def feedback():
     if not data or 'text' not in data or 'label' not in data:
         return jsonify({'error': 'Parameters "text" and "label" are required.'}), 400
 
-    label = parse_feedback_label(data['label'])
-    if label is None:
+    label = data['label']
+
+    if label not in [0, 1, '0', '1']:
         return jsonify({'error': 'Label must be 0 (Real) or 1 (Fake).'}), 400
 
     text = str(data['text']).strip()
-    text = unicodedata.normalize('NFKC', text)
 
     if len(text) < 10:
         return jsonify({'error': 'Feedback text is too short (minimum 10 characters).'}), 400
 
+    label = int(label)
     os.makedirs(DATA_DIR, exist_ok=True)
     file_exists = os.path.exists(FEEDBACK_PATH)
 
