@@ -2,15 +2,18 @@
 
 A production-grade Machine Learning web application that classifies news articles as **Real** or **Fake**, trained on **40.449 English news articles**, with **leakage-free methodology**, **Explainable AI (XAI)**, and a **human feedback loop**.
 
-**Test set performance (8.091 unseen articles):**
+**Test set performance (8.091 unseen berita Bahasa Inggris, dalam distribusi):**
 
-| Metric | Score |
-|--------|-------|
-| Accuracy | **97.52%** |
-| ROC-AUC | **0.9948** |
-| Fake Precision | **0.97** |
-| Fake Recall | **0.98** |
-| Fake F1-Score | **0.97** |
+| Metrik | Nilai | Catatan |
+|--------|-------|---------|
+| Akurasi | **97.52%** | Hanya berlaku untuk uji Bahasa Inggris dalam distribusi (dataset GonzaloA/fake_news), **bukan** untuk Bahasa Indonesia. |
+| ROC-AUC | **0.9948** | Bahasa Inggris, dalam distribusi. |
+| Fake Precision | **0.97** | Bahasa Inggris, dalam distribusi. |
+| Fake Recall | **0.98** | Bahasa Inggris, dalam distribusi. |
+| Fake F1-Score | **0.97** | Bahasa Inggris, dalam distribusi. |
+
+> ⚠️ **Status keandalan model Bahasa Indonesia (Saring Berita)**
+> Model Bahasa Indonesia **tidak dianggap andal** untuk deteksi hoaks produksi. Pada TAHAP 2, akurasi hold-out Indonesia terbaik adalah **67,96%** (Sentence-Transformer + LogisticRegression pada 103 contoh hold-out independen), yang masih sangat di bawah ambang **85%**. Oleh karena itu `MODEL_RELIABLE=false` dan setiap prediksi disertai peringatan "Hasil eksperimental". Jangan mengklaim model ini andal. Lihat `TAHAP4_REPORT.md`, `TAHAP_A_REPORT.md`, dan `models/model_card_id.md` untuk detail metrik serta penilaian jujur.
 
 ---
 
@@ -198,9 +201,29 @@ curl -X POST http://127.0.0.1:5000/predict \
   "key_influences": [
     {"token": "claim",   "weight": 0.5501, "indicator": "fake"},
     {"token": "secret",  "weight": 0.4350, "indicator": "fake"}
-  ]
+  ],
+  "key_influences_note": null,
+  "language_detection": {
+    "code": "en", "name": "English", "supported": true, "warning": null
+  }
 }
 ```
+
+When no known keyword can be attributed, `key_influences` is empty and
+`key_influences_note` explains why. Full-width input (e.g. `Ｂｒｅａｋｉｎｇ`) is
+normalised with Unicode NFKC before cleaning and language detection.
+
+Language detection uses a lightweight lexicon vote. Supported languages are
+English (`en`) and Indonesian (`id`); Javanese (`jv`), Sundanese (`su`), and
+Batak (`btk`) are detected but flagged as unsupported (`warning` set).
+Unknown input returns `code: "unknown"`.
+
+Per-language model selection — when Indonesian is detected, `/predict` uses the
+Indonesian artefacts under `models/id/` (its own model, vectorizer, feature
+weights, and tuned threshold); English, regional, and unknown inputs fall back
+to the English primary model. The response includes `model_used` (`en` or `id`)
+and the threshold that was applied, so callers can verify which model served the
+prediction.
 
 ### `POST /feedback`
 ```bash
@@ -216,6 +239,16 @@ curl -X POST http://127.0.0.1:5000/feedback \
 | `/` | GET | Web dashboard |
 | `/metrics` | GET | Evaluation metrics + methodology flags |
 | `/health` | GET | Health, threshold, pending feedback count |
+
+**Rate limiting** — `/predict`, `/feedback`, and `/metrics` allow 30 requests
+per minute per IP by default (`429` with a JSON error when exceeded). Override
+with `RATE_LIMIT_PER_MINUTE` (e.g. `10 per minute`) and set
+`RATE_LIMIT_STORAGE_URI` to a shared backend (e.g. Redis) for multi-worker
+deployments. `/` and `/health` are deliberately unlimited for UI and uptime
+checks.
+
+`POST /feedback` only accepts labels `0`/`1` (numbers or strings); booleans and
+other values are rejected with `400`.
 
 ---
 
@@ -311,3 +344,17 @@ The API returns the top influential unigrams/bigrams per prediction, rendered in
 - TF-IDF + linear models capture lexical patterns, not deep semantics.
 - Dataset labels are inherited from the source; real-world drift requires periodic retraining.
 - The model should assist — not replace — human fact-checking.
+
+### Model Bahasa Indonesia — status keandalan (Saring Berita)
+
+- Model Indonesia **tidak dianggap andal** untuk deteksi hoaks produksi. Akurasi hold-out Indonesia terbaik = **67,96%** (103 contoh independen), sangat di bawah ambang **85%**.
+- `MODEL_RELIABLE=false`; setiap prediksi Indonesia disertai peringatan "Hasil eksperimental — model ini belum teruji cukup".
+- Tidak ada konfounding sumber sempurna (kelas valid dan hoak ada di kedua sumber), tetapi satu sumber (Rifky/turnbackhoax.id) mendominasi data latih (7.940 dari 8.487 baris), sehingga ada risiko bias gaya sumber ringan.
+- Interval kepercayaan 95% (Wilson) antar model tumpang tindih, jangan memilih model berdasarkan selisih akurasi kecil.
+
+### Fitur pencocokan klaim hoaks yang sudah dibantah (TAHAP B)
+
+- Untuk teks Indonesia, sistem mencocokkan kalimat input dengan indeks judul klaim hoak yang sudah dibantah (turnbackhoax.id) melalui embedding multibahasa.
+- Hasil pencocokan **bukan bukti** bahwa teks adalah hoaks; kemiripan teks hanya indikasi. Buka tautan klarifikasi untuk verifikasi lengkap.
+- Ambang kemiripan (0,66) ditetapkan pada validasi hold-out v2 agar false match pada berita valid rendah (3,51%), dengan presisi pencocokan 86,67% dan recall hoak 28,26%.
+- Hanya judul + tautan sumber yang disimpan; tidak ada teks penuh artikel berhak cipta.

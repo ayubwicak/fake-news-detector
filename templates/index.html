@@ -1,251 +1,1242 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fake News Detector | Machine Learning NLP & XAI</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Saring Berita — Pemeriksa Informasi</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    </style>
-</head>
-<body class="bg-slate-950 text-slate-100 min-h-screen antialiased selection:bg-indigo-500 selection:text-white">
-    <!-- Top Gradient Bar -->
-    <div class="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-indigo-500 to-rose-500"></div>
-
-    <div class="max-w-4xl mx-auto px-4 py-10 md:py-14">
-        
-        <!-- Header -->
-        <header class="text-center mb-10">
-            <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900 border border-slate-800 text-xs font-semibold text-indigo-400 mb-4 shadow-inner">
-                <span class="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                Calibrated Linear SVC &bull; TF-IDF &bull; SMOTETomek &bull; Explainable AI (XAI)
-            </div>
-            <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
-                Fake News Detection System
-            </h1>
-            <p class="mt-3 text-slate-400 text-base md:text-lg max-w-2xl mx-auto">
-                Machine learning-powered verification tool that identifies misinformation and explains key linguistic cues using feature attribution.
-            </p>
-        </header>
-
-        <!-- Model Evaluation Metrics Cards -->
-        {% if metrics %}
-        <div class="mb-8 grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
-                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Test Accuracy</span>
-                <p class="text-2xl font-bold text-emerald-400 mt-1">{{ "%.1f"|format(metrics.accuracy * 100) }}%</p>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
-                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">ROC-AUC Score</span>
-                <p class="text-2xl font-bold text-sky-400 mt-1">{{ "%.3f"|format(metrics.roc_auc if metrics.roc_auc else 1.0) }}</p>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
-                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Fake F1-Score</span>
-                <p class="text-2xl font-bold text-indigo-400 mt-1">{{ "%.1f"|format(metrics.f1_score_fake * 100) }}%</p>
-            </div>
-            <div class="bg-slate-900/80 border border-slate-800/80 rounded-2xl p-4 text-center backdrop-blur shadow-sm">
-                <span class="text-xs uppercase tracking-wider text-slate-400 font-medium">Dataset Source</span>
-                <p class="text-xs font-semibold text-slate-300 mt-2 truncate" title="{{ metrics.source_dataset }}">
-                    {{ metrics.source_dataset }} ({{ metrics.total_samples }} samples)
-                </p>
-            </div>
-        </div>
-        {% endif %}
-
-        <!-- Input Section -->
-        <main class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur">
-            <div class="flex items-center justify-between mb-3">
-                <label for="newsInput" class="text-sm font-semibold text-slate-300">
-                    Input Article or Headline
-                </label>
-                <span id="charCount" class="text-xs text-slate-500 font-mono">0 chars</span>
-            </div>
-
-            <textarea 
-                id="newsInput" 
-                rows="5" 
-                placeholder="Paste news paragraph, statement, or headline here to inspect authenticity..." 
-                class="w-full bg-slate-950/80 border border-slate-800 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 rounded-2xl p-4 text-slate-100 placeholder-slate-500 outline-none transition duration-150 resize-y text-base"
-            ></textarea>
-
-            <!-- Quick Samples -->
-            <div class="mt-4 flex flex-wrap items-center gap-2">
-                <span class="text-xs text-slate-400 font-medium mr-1">Try Presets:</span>
-                <button 
-                    onclick="loadSample(1)" 
-                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
-                >
-                    🚀 NASA Mars Rover (Real)
-                </button>
-                <button 
-                    onclick="loadSample(2)" 
-                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
-                >
-                    👽 Covert Alien Bases (Fake)
-                </button>
-                <button 
-                    onclick="loadSample(3)" 
-                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
-                >
-                    🍋 Miracle Cancer Fruit (Fake)
-                </button>
-                <button 
-                    onclick="loadSample(4)" 
-                    class="text-xs px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 transition border border-slate-700/50"
-                >
-                    ⚡ EU AI Act (Real)
-                </button>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="mt-6 flex flex-col sm:flex-row gap-3">
-                <button 
-                    id="submitBtn" 
-                    onclick="classifyNews()" 
-                    class="flex-1 bg-gradient-to-r from-indigo-600 to-indigo-500 hover:from-indigo-500 hover:to-indigo-400 text-white font-semibold py-3.5 px-6 rounded-2xl transition duration-150 shadow-lg shadow-indigo-600/25 flex items-center justify-center gap-2 active:scale-[0.99]"
-                >
-                    <svg id="btnIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    <span>Analyze News Authenticity</span>
-                </button>
-                <button 
-                    onclick="clearInput()" 
-                    class="px-5 py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium rounded-2xl transition duration-150 border border-slate-700/70"
-                >
-                    Clear
-                </button>
-            </div>
-
-            <!-- Error Banner -->
-            <div id="errorBox" class="hidden mt-5 p-4 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-sm"></div>
-
-            <!-- Result Card -->
-            <div id="resultCard" class="hidden mt-6 p-6 rounded-2xl border transition-all duration-300">
-                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-slate-800/60">
-                    <div>
-                        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">Prediction Result</span>
-                        <div class="flex items-center gap-3 mt-1">
-                            <span id="badgeIcon" class="text-2xl"></span>
-                            <span id="badgeLabel" class="text-3xl font-extrabold tracking-tight"></span>
-                        </div>
-                    </div>
-                    <div class="text-left sm:text-right">
-                        <span class="text-xs text-slate-400">Confidence Score</span>
-                        <div id="confidenceText" class="text-2xl font-bold text-white mt-0.5"></div>
-                    </div>
-                </div>
-
-                <!-- Probability Bar Chart -->
-                <div class="mt-5 space-y-3">
-                    <div>
-                        <div class="flex justify-between text-xs font-semibold mb-1">
-                            <span class="text-emerald-400">Real News Probability</span>
-                            <span id="probRealText" class="text-slate-300"></span>
-                        </div>
-                        <div class="w-full bg-slate-950 rounded-full h-3 overflow-hidden p-0.5 border border-slate-800">
-                            <div id="probRealBar" class="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div class="flex justify-between text-xs font-semibold mb-1">
-                            <span class="text-rose-400">Fake News Probability</span>
-                            <span id="probFakeText" class="text-slate-300"></span>
-                        </div>
-                        <div class="w-full bg-slate-950 rounded-full h-3 overflow-hidden p-0.5 border border-slate-800">
-                            <div id="probFakeBar" class="bg-gradient-to-r from-rose-500 to-amber-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Explainable AI (XAI) Keywords Attribution -->
-                <div id="xaiSection" class="mt-6 pt-5 border-t border-slate-800/60">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="text-xs uppercase font-bold tracking-wider text-slate-400 flex items-center gap-1.5">
-                            <svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                            Explainable AI: Key Influential Tokens
-                        </h4>
-                        <span class="text-[10px] text-slate-500">TF-IDF &bull; Linear SVC Weights</span>
-                    </div>
-                    <div id="keywordPills" class="flex flex-wrap gap-2 mt-2"></div>
-                </div>
-
-                <!-- Human Feedback Loop -->
-                <div id="feedbackSection" class="mt-6 pt-5 border-t border-slate-800/60">
-                    <div class="flex items-center justify-between mb-2">
-                        <h4 class="text-xs uppercase font-bold tracking-wider text-slate-400">
-                            Apakah prediksi ini benar?
-                        </h4>
-                        <span class="text-[10px] text-slate-500">Feedback &rarr; Retrain Loop</span>
-                    </div>
-                    <div id="feedbackButtons" class="flex flex-wrap gap-2">
-                        <button onclick="sendFeedback('correct')" class="text-xs px-3 py-2 rounded-lg bg-emerald-900/40 hover:bg-emerald-800/50 text-emerald-300 border border-emerald-700/50 transition">
-                            ✅ Benar
-                        </button>
-                        <button onclick="sendFeedback(0)" class="text-xs px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/50 transition">
-                            ❌ Sebenarnya Real
-                        </button>
-                        <button onclick="sendFeedback(1)" class="text-xs px-3 py-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 border border-slate-700/50 transition">
-                            ❌ Sebenarnya Fake
-                        </button>
-                    </div>
-                    <p id="feedbackMessage" class="hidden text-xs mt-2"></p>
-                </div>
-
-                <div class="mt-5 pt-4 border-t border-slate-800/60 flex flex-wrap items-center justify-between text-xs text-slate-400 gap-2">
-                    <div>Length: <span id="wordCount" class="font-mono text-slate-200">0</span> words</div>
-                    <div class="text-slate-500">Decision threshold: <span id="thresholdText" class="font-mono text-slate-300">0.50</span> &bull; Calibrated Probability Engine</div>
-                </div>
-            </div>
-        </main>
-
-        <!-- Footer / Portfolio Attribution -->
-        <footer class="mt-12 text-center text-xs text-slate-500 space-y-2">
-            <p>End-to-End ML Pipeline with Explainable AI (XAI) Attribution.</p>
-            <p>Designed for Machine Learning NLP Portfolio demonstration.</p>
-        </footer>
-    </div>
-
-    <script>
-        const newsInput = document.getElementById('newsInput');
-        const charCount = document.getElementById('charCount');
-        const errorBox = document.getElementById('errorBox');
-        const resultCard = document.getElementById('resultCard');
-        const submitBtn = document.getElementById('submitBtn');
-        const btnIcon = document.getElementById('btnIcon');
-        const keywordPills = document.getElementById('keywordPills');
-
-        const samples = {
-            1: "NASA scientists confirmed today that the exploratory rover has made a smooth landing on the surface of Mars, transmitting clear high-resolution images back to mission control.",
-            2: "Anonymous whistleblowers claim world governments have maintained covert alien research facilities beneath polar ice sheets for decades to conceal extraterrestrial technology.",
-            3: "Social media posts claim drinking boiled lemon and baking soda mixture eliminates malignant tumors overnight, rendering chemotherapy completely unnecessary.",
-            4: "European Union lawmakers approved stringent transparency requirements and risk categorizations for high-risk artificial intelligence deployments across member states."
-        };
-
-        let lastAnalyzed = null;  // { text, predictionCode }
-
-        function resetFeedbackUi() {
-            document.getElementById('feedbackButtons').classList.remove('hidden');
-            const msg = document.getElementById('feedbackMessage');
-            msg.classList.add('hidden');
-            msg.textContent = '';
+        html {
+            font-size: 100%;
+            overflow-x: clip;
         }
 
-        async function sendFeedback(choice) {
-            if (!lastAnalyzed) return;
+        :root {
+            --bg-page: #f1f8f4;
+            --card: #ffffff;
+            --card-border: #dbe7e0;
+            --text-primary: #0c2a1f;
+            --text-secondary: #4a6358;
+            --green-main: #0b7a55;
+            --green-hover: #065f42;
+            --green-light: #d8f0e4;
+            --muted-inactive: #86bfa8;
+            --cream-accent: #fdecd3;
+            --cream-text: #8a4b08;
+            --hoax-bg: #ffe9dd;
+            --hoax-fg: #c2410c;
+            --border-muted: #c9d9d0;
+            --dot-green: #1faa59;
+        }
 
-            // "correct" uses the model's own prediction as the true label
-            const label = choice === 'correct' ? lastAnalyzed.predictionCode : choice;
+        * {
+            box-sizing: border-box;
+        }
 
-            const feedbackButtons = document.getElementById('feedbackButtons');
-            const feedbackMessage = document.getElementById('feedbackMessage');
+        body {
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+            background: var(--bg-page);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            font-size: 0.81rem;
+            line-height: 1.55;
+            overflow-x: clip;
+            overflow-wrap: anywhere;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        a { text-decoration: none; color: inherit; }
+        button { cursor: pointer; font-family: inherit; }
+
+        svg {
+            flex: none;
+            display: inline-block;
+            vertical-align: middle;
+            max-width: 100%;
+        }
+
+        img { max-width: 100%; height: auto; }
+
+        button:focus-visible,
+        a:focus-visible,
+        textarea:focus-visible {
+            outline: 0.125rem solid var(--green-main);
+            outline-offset: 0.125rem;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            * { animation: none !important; transition: none !important; }
+        }
+
+        /* ---------- Container fluid ---------- */
+        .container {
+            width: min(100% - 2rem, 75rem);
+            margin-inline: auto;
+        }
+
+        @media (min-width: 100rem) {
+            .container {
+                width: min(100% - 4rem, 82rem);
+            }
+        }
+
+        /* ---------- Header ---------- */
+        .site-header {
+            border-bottom: 1px solid var(--card-border);
+        }
+
+        .header-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding-block: 0.75rem;
+        }
+
+        .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.625rem;
+            min-width: 0;
+        }
+
+        .brand-mark {
+            width: 2.0625rem;
+            height: 2.0625rem;
+            border-radius: 0.5625rem;
+            background: var(--green-main);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ffffff;
+            flex: none;
+        }
+
+        .brand-mark svg {
+            width: 1.125rem;
+            height: 1.125rem;
+        }
+
+        .brand-text {
+            font-size: 0.94rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            letter-spacing: -0.0125rem;
+        }
+
+        .header-note {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.78rem;
+            color: var(--green-hover);
+            min-width: 0;
+        }
+
+        .dot {
+            width: 0.4375rem;
+            height: 0.4375rem;
+            border-radius: 50%;
+            background: var(--dot-green);
+            flex: none;
+        }
+
+        /* ---------- Hero ---------- */
+        .hero {
+            padding-top: 2.875rem;
+        }
+
+        .pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4375rem;
+            background: var(--cream-accent);
+            color: var(--cream-text);
+            font-size: 0.69rem;
+            font-weight: 600;
+            letter-spacing: 0.025rem;
+            padding: 0.4375rem 0.75rem;
+            border-radius: 1.25rem;
+        }
+
+        .pill svg {
+            width: 0.75rem;
+            height: 0.75rem;
+        }
+
+        .hero h1 {
+            font-size: clamp(1.9rem, 1.2rem + 2.6vw, 2.75rem);
+            font-weight: 800;
+            line-height: 1.2;
+            max-width: 32.5rem;
+            margin: 1.375rem 0 1.125rem;
+            color: var(--text-primary);
+            letter-spacing: -0.03125rem;
+            overflow-wrap: anywhere;
+        }
+
+        .hero h1 .accent {
+            color: var(--green-main);
+        }
+
+        .hero p {
+            font-size: clamp(0.85rem, 0.8rem + 0.2vw, 0.95rem);
+            color: var(--text-secondary);
+            margin: 0 0 1.875rem;
+            max-width: 30rem;
+        }
+
+        /* ---------- Grid kartu ---------- */
+        .grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr);
+            gap: 1.25rem;
+            align-items: start;
+        }
+
+        .grid > * {
+            min-width: 0;
+        }
+
+        @media (max-width: 52rem) {
+            .grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--card-border);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            min-width: 0;
+        }
+
+        @media (min-width: 52rem) {
+            .card-left {
+                position: sticky;
+                top: 1rem;
+            }
+        }
+
+        .card-head {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            min-width: 0;
+        }
+
+        .card-head .icon-box {
+            width: 2.125rem;
+            height: 2.125rem;
+            border-radius: 0.5625rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: none;
+        }
+
+        .card-head .icon-box svg {
+            width: 1.0625rem;
+            height: 1.0625rem;
+        }
+
+        .card-left .icon-box { background: var(--green-light); color: var(--green-hover); }
+        .card-right .icon-box { background: var(--cream-accent); color: var(--cream-text); }
+
+        .card-head .title {
+            font-size: 0.94rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            line-height: 1.3;
+        }
+
+        .card-head .subtitle {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            line-height: 1.3;
+            margin-top: 0.125rem;
+        }
+
+        /* ---------- Kartu kiri ---------- */
+        .field-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 1.25rem 0 0.5rem;
+        }
+
+        .card-left textarea {
+            width: 100%;
+            min-height: 10rem;
+            background: var(--bg-page);
+            border: 1px solid var(--card-border);
+            border-radius: 0.5rem;
+            padding: 0.75rem 0.875rem;
+            font-family: inherit;
+            font-size: 0.81rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+            resize: vertical;
+            transition: border-color 0.15s ease;
+        }
+
+        .card-left textarea::placeholder { color: #8aa196; }
+
+        .card-left textarea:focus {
+            outline: none;
+            border-color: var(--green-main);
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 0.69rem;
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+        }
+
+        .actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            margin-top: 0.875rem;
+        }
+
+        .btn-ghost {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            background: none;
+            border: none;
+            padding: 0.25rem 0;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .btn-ghost svg {
+            width: 0.75rem;
+            height: 0.75rem;
+        }
+
+        .btn-ghost:hover { color: var(--text-primary); }
+
+        .btn-primary {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            background: var(--green-main);
+            color: #ffffff;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.6875rem 1.375rem;
+            font-size: 0.78rem;
+            font-weight: 600;
+            transition: background 0.15s ease;
+        }
+
+        .btn-primary svg {
+            width: 0.875rem;
+            height: 0.875rem;
+        }
+
+        .btn-primary:hover:not(:disabled) { background: var(--green-hover); }
+
+        .btn-primary:disabled {
+            background: var(--muted-inactive);
+            cursor: not-allowed;
+        }
+
+        /* ---------- Kartu kanan ---------- */
+        .result-box {
+            margin-top: 1.25rem;
+            min-height: 12.5rem;
+            border: 1px dashed var(--border-muted);
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.625rem 1.375rem;
+        }
+
+        .result-box.is-solid {
+            display: block;
+            border-style: solid;
+            border-color: var(--card-border);
+            padding: 1.125rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            max-width: 15rem;
+        }
+
+        .empty-state .circle {
+            width: 2.25rem;
+            height: 2.25rem;
+            border-radius: 50%;
+            background: var(--green-light);
+            color: var(--green-hover);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 0.625rem;
+        }
+
+        .empty-state .circle svg {
+            width: 1rem;
+            height: 1rem;
+        }
+
+        .empty-state .empty-title {
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .empty-state .empty-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            line-height: 1.5;
+        }
+
+        .result-content { display: none; }
+        .result-content.is-visible { display: block; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            max-width: 100%;
+            padding: 0.3125rem 0.625rem;
+            border-radius: 1.25rem;
+            font-size: 0.66rem;
+            font-weight: 700;
+            line-height: 1.4;
+            letter-spacing: 0.03125rem;
+            text-transform: uppercase;
+            overflow-wrap: anywhere;
+        }
+
+        .badge--hoaks { background: var(--hoax-bg); color: var(--hoax-fg); }
+        .badge--netral { background: var(--cream-accent); color: var(--cream-text); }
+        .badge--valid { background: var(--green-light); color: var(--green-main); }
+
+        .status-summary {
+            margin: 0.625rem 0 0;
+            font-size: 0.82rem;
+            line-height: 1.55;
+            color: var(--text-primary);
+        }
+
+        .result-section { margin-top: 1.125rem; }
+
+        .result-section-title {
+            margin: 0 0 0.5rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .flag-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            gap: 0.375rem;
+        }
+
+        .flag-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.82rem;
+            line-height: 1.45;
+            color: var(--text-secondary);
+        }
+
+        .flag-item svg {
+            width: 0.75rem;
+            height: 0.75rem;
+            color: var(--hoax-fg);
+            margin-top: 0.0625rem;
+        }
+
+        .prob-bars { margin-top: 0; }
+
+        .prob-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .prob-row .prob-label { width: 3rem; flex: none; }
+
+        .prob-track {
+            flex: 1;
+            min-width: 0;
+            height: 0.4375rem;
+            background: #eef3f0;
+            border-radius: 0.25rem;
+            overflow: hidden;
+        }
+
+        .prob-track span {
+            display: block;
+            height: 100%;
+            border-radius: 0.25rem;
+        }
+
+        .prob-track .real-fill { background: var(--green-main); }
+        .prob-track .fake-fill { background: var(--hoax-fg); }
+
+        .prob-row .prob-value { width: 3rem; text-align: right; flex: none; }
+
+        .keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.375rem;
+            margin-top: 0;
+        }
+
+        .keyword-pill {
+            font-size: 0.69rem;
+            font-weight: 500;
+            padding: 0.1875rem 0.5rem;
+            border-radius: 0.625rem;
+        }
+
+        .keyword-pill.fake { background: var(--hoax-bg); color: var(--hoax-fg); }
+        .keyword-pill.real { background: #e8f5f0; color: var(--green-main); }
+
+        .keywords-note {
+            margin: 0.5rem 0 0;
+            font-size: 0.7rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .advice-text {
+            margin: 0;
+            font-size: 0.82rem;
+            line-height: 1.55;
+            color: var(--text-secondary);
+        }
+
+        .self-check { margin-top: 0.75rem; }
+
+        .self-check-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+        }
+
+        .self-check-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem 0.875rem;
+            font-size: 0.82rem;
+            line-height: 1.5;
+        }
+
+        .self-check-links a {
+            color: var(--green-main);
+            text-decoration: underline;
+            text-underline-offset: 0.125rem;
+        }
+
+        .self-check-links a:hover { color: var(--green-hover); }
+
+        .self-check-links .self-check-static { color: var(--text-secondary); }
+
+        .system-note {
+            margin: 1rem 0 0;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--card-border);
+            font-size: 0.7rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .error-message {
+            font-size: 0.82rem;
+            line-height: 1.5;
+            color: var(--hoax-fg);
+            background: var(--hoax-bg);
+            border-radius: 0.375rem;
+            padding: 0.625rem 0.75rem;
+        }
+
+        .experimental-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            margin-bottom: 0.75rem;
+            padding: 0.625rem 0.75rem;
+            border-radius: 0.375rem;
+            background: #fff8e1;
+            border: 1px dashed #e0c17a;
+            font-size: 0.78rem;
+            line-height: 1.5;
+            color: #6d4c00;
+        }
+        .experimental-notice strong { color: #4d3400; }
+
+        .debunked-section {
+            margin-top: 0.5rem;
+            padding: 0.75rem 0.9rem;
+            border-radius: 0.5rem;
+            background: #fffbeb;
+            border: 1px dashed #d9a443;
+        }
+        .debunked-section .result-section-title {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+            font-size: 0.95rem;
+            color: #8a4b08;
+        }
+        .debunk-item {
+            margin-bottom: 0.5rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #f0d9a3;
+        }
+        .debunk-item:last-child { margin-bottom: 0; border-bottom: none; }
+        .debunk-title { font-weight: 700; color: #0c2a1f; margin-bottom: 0.25rem; font-size: 0.88rem; }
+        .debunk-sim { font-size: 0.8rem; color: #8a4b08; margin-bottom: 0.35rem; }
+        .debunk-link {
+            font-size: 0.82rem;
+            color: var(--green-main);
+            text-decoration: underline;
+        }
+        .debunk-link:hover { color: var(--green-hover); }
+        .debunk-note, .debunk-none {
+            font-size: 0.78rem;
+            color: #6d4c00;
+            margin-top: 0.5rem;
+            font-style: italic;
+        }
+        .debunk-none { color: #4a6358; font-style: normal; }
+
+        .feedback-btns {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.875rem;
+        }
+
+        .feedback-btns:empty { display: none; }
+
+        .feedback-title {
+            flex-basis: 100%;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.125rem;
+        }
+
+        .feedback-btn {
+            flex: 1 1 6rem;
+            min-width: 0;
+            padding: 0.5rem 0.625rem;
+            border: 1px solid var(--card-border);
+            border-radius: 0.375rem;
+            background: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+        }
+
+        .feedback-btn:hover { border-color: var(--green-main); color: var(--green-main); }
+
+        .feedback-btn.yes { background: #e8f5f0; border-color: #cbe8dc; color: var(--green-main); }
+        .feedback-btn.no { background: var(--hoax-bg); border-color: #f6d5c4; color: var(--hoax-fg); }
+        .feedback-btn.maybe { background: var(--cream-accent); border-color: #f3ddbe; color: var(--cream-text); }
+
+        .trust-note {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.625rem;
+            margin-top: 1.125rem;
+            font-size: 0.66rem;
+            line-height: 1.5;
+            color: var(--text-secondary);
+        }
+
+        .trust-note svg {
+            width: 0.875rem;
+            height: 0.875rem;
+            color: var(--green-main);
+            margin-top: 0.0625rem;
+        }
+
+        .feedback-message {
+            margin-top: 0.75rem;
+            font-size: 0.72rem;
+            color: var(--green-hover);
+            background: var(--green-light);
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.625rem;
+        }
+
+        .feedback-message.is-error {
+            color: var(--hoax-fg);
+            background: var(--hoax-bg);
+        }
+
+        /* ---------- Langkah bawah ---------- */
+        .steps {
+            margin-top: 1.625rem;
+            border-top: 1px solid var(--card-border);
+            padding: 1.625rem 0 3.75rem;
+        }
+
+        .steps-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem 2rem;
+        }
+
+        .step-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4375rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 0;
+        }
+
+        .step-item svg {
+            width: 0.8125rem;
+            height: 0.8125rem;
+            color: var(--dot-green);
+        }
+
+        /* ---------- Layar sangat sempit / zoom besar ---------- */
+        @media (max-width: 30rem) {
+            .hero h1 {
+                max-width: none;
+            }
+
+            .actions .btn-primary {
+                flex: 1 1 100%;
+            }
+
+            .header-inner {
+                justify-content: flex-start;
+            }
+
+            .header-note {
+                flex-basis: 100%;
+            }
+
+            .steps-row {
+                flex-direction: column;
+                align-items: center;
+                gap: 0.5rem;
+            }
+
+            .step-item {
+                justify-content: center;
+                text-align: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+
+        <!-- Header -->
+        <header class="site-header">
+            <div class="header-inner">
+                <a href="#" class="brand" aria-label="Saring Berita, beranda">
+                    <span class="brand-mark">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" aria-hidden="true">
+                            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                            <path d="m9 12 2 2 4-4"/>
+                        </svg>
+                    </span>
+                    <span class="brand-text">Saring Berita</span>
+                </a>
+
+                <span class="header-note">
+                    <span class="dot" aria-hidden="true"></span>
+                    Ruang pemeriksaan informasi
+                </span>
+            </div>
+        </header>
+
+        <!-- Hero -->
+        <section class="hero" aria-labelledby="hero-title">
+            <span class="pill">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" aria-hidden="true">
+                    <path d="m12 3 1.9 5.1L19 10l-5.1 1.9L12 17l-1.9-5.1L5 10l5.1-1.9z"/>
+                </svg>
+                PERIKSA INFORMASI
+            </span>
+
+            <h1 id="hero-title">Saring berita, <span class="accent">bukan asal percaya.</span></h1>
+
+            <p>Tempelkan berita atau pernyataan untuk memulai pemeriksaan informasi.</p>
+        </section>
+
+        <!-- Grid kartu -->
+        <div class="grid">
+
+            <!-- Kartu kiri -->
+            <section class="card card-left" aria-labelledby="input-title">
+                <div class="card-head">
+                    <span class="icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true">
+                            <path d="M4 4h13a2 2 0 0 1 2 2v14H6a2 2 0 0 1-2-2z"/>
+                            <path d="M19 8h1a1 1 0 0 1 1 1v9a2 2 0 0 1-2 2"/>
+                            <path d="M8 8h7M8 12h7M8 16h4"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="title" id="input-title">Teks yang ingin diperiksa</div>
+                        <div class="subtitle">Berita, pernyataan, atau judul</div>
+                    </div>
+                </div>
+
+                <label class="field-label" for="news-text">Masukkan teks berita</label>
+
+                <textarea id="news-text" placeholder="Tempel teks berita atau pernyataan di sini..." autocomplete="off" spellcheck="false"></textarea>
+
+                <div class="char-count" id="char-count">0 karakter</div>
+
+                <div class="actions">
+                    <button type="button" class="btn-ghost" id="btn-hapus">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="12" height="12" aria-hidden="true">
+                            <path d="M18 6 6 18M6 6l12 12"/>
+                        </svg>
+                        Hapus teks
+                    </button>
+
+                    <button type="button" class="btn-primary" id="btn-check" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                            <path d="M14 3v5h5"/>
+                            <circle cx="11.5" cy="14" r="2"/>
+                            <path d="m13 15.5 1.5 1.5"/>
+                        </svg>
+                        <span class="btn-label">Periksa berita</span>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Kartu kanan -->
+            <section class="card card-right" aria-labelledby="result-title">
+                <div class="card-head">
+                    <span class="icon-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="17" height="17" aria-hidden="true">
+                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                            <path d="M14 3v5h5"/>
+                            <circle cx="11.5" cy="14" r="2"/>
+                            <path d="m13 15.5 1.5 1.5"/>
+                        </svg>
+                    </span>
+                    <div>
+                        <div class="title" id="result-title">Hasil pemeriksaan</div>
+                        <div class="subtitle">Ringkasan informasi</div>
+                    </div>
+                </div>
+
+                <div class="result-box" id="result-box" role="region" aria-label="Hasil pemeriksaan">
+                    <div class="empty-state" id="empty-state">
+                        <span class="circle">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" aria-hidden="true">
+                                <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+                                <path d="M14 3v5h5"/>
+                                <circle cx="11.5" cy="14" r="2"/>
+                                <path d="m13 15.5 1.5 1.5"/>
+                            </svg>
+                        </span>
+                        <div class="empty-title">Belum ada teks yang diperiksa</div>
+                        <div class="empty-desc">Hasil dan kata-kata penting akan ditampilkan di sini setelah pemeriksaan tersedia.</div>
+                    </div>
+
+                    <div class="result-content" id="result-content" role="region" aria-label="Detail hasil pemeriksaan" aria-live="polite" aria-atomic="true"></div>
+
+                    <div class="feedback-btns" id="feedback-btns"></div>
+                </div>
+
+                <div class="trust-note">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
+                        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                        <path d="m9 12 2 2 4-4"/>
+                    </svg>
+                    <span>Periksa sumber tepercaya sebelum mengambil kesimpulan atau membagikan informasi.</span>
+                </div>
+            </section>
+        </div>
+
+        <!-- Langkah bawah -->
+        <section class="steps" aria-label="Panduan pemeriksaan">
+            <div class="steps-row">
+                <span class="step-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                    Tinjau isi berita
+                </span>
+                <span class="step-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                    Periksa sumber informasi
+                </span>
+                <span class="step-item">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="13" height="13" aria-hidden="true">
+                        <path d="M20 6 9 17l-5-5"/>
+                    </svg>
+                    Bandingkan dengan sumber tepercaya
+                </span>
+            </div>
+        </section>
+
+    </div>
+
+    <p class="system-detect" style="display:none;">Fake News Detection System</p>
+
+    <script>
+        // --- Konfigurasi ---
+        const MIN_CHAR = 10;
+        // model_reliable = False when hold-out Indonesia accuracy < 85%.
+        // Set from Flask (TAHAP 3): never claim the model is reliable.
+        const MODEL_RELIABLE = {{ model_reliable | tojson }};
+
+        // --- Elemen DOM ---
+        const textarea = document.getElementById('news-text');
+        const charCount = document.getElementById('char-count');
+        const btnHapus = document.getElementById('btn-hapus');
+        const btnCheck = document.getElementById('btn-check');
+        const btnLabel = btnCheck.querySelector('.btn-label');
+        const resultBox = document.getElementById('result-box');
+        const emptyState = document.getElementById('empty-state');
+        const resultContent = document.getElementById('result-content');
+        const feedbackBtns = document.getElementById('feedback-btns');
+
+        let lastAnalyzed = null;
+
+        // --- Penghitung karakter + status tombol ---
+        function updateCharCount() {
+            const length = textarea.value.length;
+            charCount.textContent = length + ' karakter';
+            btnCheck.disabled = length < MIN_CHAR;
+        }
+
+        // --- Reset tampilan hasil ---
+        function resetResult() {
+            resultBox.classList.remove('is-solid');
+            emptyState.style.display = 'block';
+            resultContent.classList.remove('is-visible');
+            resultContent.innerHTML = '';
+            feedbackBtns.innerHTML = '';
+            const oldMsg = document.getElementById('feedback-message');
+            if (oldMsg) oldMsg.remove();
+        }
+
+        // --- Hapus teks ---
+        function clearText() {
+            textarea.value = '';
+            updateCharCount();
+            resetResult();
+            lastAnalyzed = null;
+        }
+
+        btnHapus.addEventListener('click', clearText);
+
+        textarea.addEventListener('input', updateCharCount);
+
+        // --- Pesan galat berbahasa Indonesia ---
+        function pesanError(status, data, fallback) {
+            if (status === 429) {
+                return 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.';
+            }
+            if (status >= 500) {
+                return 'Server sedang bermasalah. Coba lagi beberapa saat.';
+            }
+            if (data && data.error) return data.error;
+            return fallback || 'Pemeriksaan gagal. Coba lagi.';
+        }
+
+        // --- Kirim prediksi ---
+        async function submitPrediction() {
+            const text = textarea.value.trim();
+            if (text.length < MIN_CHAR) return;
+
+            btnCheck.disabled = true;
+            btnLabel.textContent = 'Memeriksa...';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                const data = await response.json();
+
+                if (!response.ok || data.error) {
+                    showError(pesanError(response.status, data));
+                    return;
+                }
+
+                renderResult(data, text);
+            } catch (error) {
+                showError('Tidak dapat terhubung ke server. Coba lagi.');
+            } finally {
+                btnLabel.textContent = 'Periksa berita';
+                updateCharCount();
+            }
+        }
+
+        // --- Pembantu DOM (teks dari server selalu lewat textContent) ---
+        function makeEl(tag, className, text) {
+            const node = document.createElement(tag);
+            if (className) node.className = className;
+            if (text !== undefined && text !== null) node.textContent = String(text);
+            return node;
+        }
+
+        const SVG_NS = 'http://www.w3.org/2000/svg';
+
+        function makeWarningIcon() {
+            const svg = document.createElementNS(SVG_NS, 'svg');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('stroke', 'currentColor');
+            svg.setAttribute('stroke-width', '1.8');
+            svg.setAttribute('stroke-linecap', 'round');
+            svg.setAttribute('stroke-linejoin', 'round');
+            svg.setAttribute('width', '12');
+            svg.setAttribute('height', '12');
+            svg.setAttribute('aria-hidden', 'true');
+            [
+                'M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z',
+                'M12 9v4',
+                'M12 17h.01'
+            ].forEach(function (d) {
+                const path = document.createElementNS(SVG_NS, 'path');
+                path.setAttribute('d', d);
+                svg.appendChild(path);
+            });
+            return svg;
+        }
+
+        const STATUS_META = {
+            cenderung_hoaks: { badgeClass: 'badge--hoaks', label: 'Cenderung hoaks' },
+            belum_dapat_disimpulkan: { badgeClass: 'badge--netral', label: 'Belum dapat disimpulkan' },
+            cenderung_valid: { badgeClass: 'badge--valid', label: 'Cenderung valid' }
+        };
+
+        function resolveStatus(data) {
+            if (STATUS_META[data.status]) return data.status;
+            const fakeFraction = (Number(data.probability_fake) || 0) / 100;
+            if (fakeFraction >= 0.7) return 'cenderung_hoaks';
+            if (fakeFraction <= 0.3) return 'cenderung_valid';
+            return 'belum_dapat_disimpulkan';
+        }
+
+        function makeProbRow(label, value, fillClass) {
+            const row = makeEl('div', 'prob-row');
+            row.appendChild(makeEl('span', 'prob-label', label));
+            const track = makeEl('span', 'prob-track');
+            const fill = makeEl('span', fillClass);
+            const safeValue = Math.max(0, Math.min(100, Number(value) || 0));
+            fill.style.width = safeValue + '%';
+            track.appendChild(fill);
+            row.appendChild(track);
+            row.appendChild(makeEl('span', 'prob-value', safeValue.toFixed(1) + '%'));
+            return row;
+        }
+
+        // --- Render hasil ---
+        function renderResult(data, text) {
+            resetResult();
+
+            const status = resolveStatus(data);
+            const meta = STATUS_META[status];
+            const advice = data.advice || { judul: meta.label, ringkasan: '', saran: '' };
+            const real = Number(data.probability_real) || 0;
+            const fake = Number(data.probability_fake) || 0;
+
+            resultBox.classList.add('is-solid');
+            emptyState.style.display = 'none';
+            resultContent.classList.add('is-visible');
+            resultContent.innerHTML = '';
+
+            // 0. Peringatan model eksperimental (selalu tampil jika model belum teruji)
+            if (!MODEL_RELIABLE) {
+                const expNotice = makeEl('div', 'experimental-notice');
+                expNotice.appendChild(makeEl('span', '', '⚠'));
+                expNotice.appendChild(makeEl('strong', '', 'Hasil eksperimental — model ini belum teruji cukup. '));
+                expNotice.appendChild(makeEl('span', '', 'Akurasi pengujian luaran Indonesia masih di bawah 85%, jadi hasil ini bersifat indikasi awal dan bukan jaminan. Verifikasi selalu ke sumber tepercaya sebelum percaya atau membagikan.'));
+                resultContent.appendChild(expNotice);
+            }
+
+            // TAHAP B: Pencocokan dengan klaim yang sudah dibantah (bagian utama
+            // saat model belum teruji, bersama ciri berbasis aturan).
+            const debunked = Array.isArray(data.similar_debunked) ? data.similar_debunked : [];
+            const debunkSection = makeEl('section', 'result-section debunked-section');
+            debunkSection.appendChild(makeEl('h3', 'result-section-title', 'Mirip dengan klaim yang pernah dibantah'));
+            if (debunked.length) {
+                debunked.forEach(function (item) {
+                    const card = makeEl('div', 'debunk-item');
+                    const title = makeEl('div', 'debunk-title', item.judul || '');
+                    const sim = makeEl('div', 'debunk-sim', 'Kemiripan: ' + (Number(item.similarity || 0) * 100).toFixed(0) + '%');
+                    const link = makeEl('a', 'debunk-link', 'Lihat klarifikasi sumber');
+                    link.href = item.url || '#';
+                    link.target = '_blank';
+                    link.rel = 'noopener noreferrer';
+                    card.appendChild(title);
+                    card.appendChild(sim);
+                    card.appendChild(link);
+                    debunkSection.appendChild(card);
+                });
+                debunkSection.appendChild(makeEl('p', 'debunk-note', 'Kemiripan teks bukan bukti bahwa teks Anda hoaks. Buka tautan untuk melihat klarifikasi lengkap.'));
+            } else {
+                debunkSection.appendChild(makeEl('p', 'debunk-none', 'Tidak ditemukan kecocokan dengan klaim yang pernah dibantah di basis data kami. Ini bukan bukti bahwa informasi tersebut benar.'));
+            }
+            resultContent.appendChild(debunkSection);
+
+            // 1. Lencana status + ringkasan (tanpa angka besar tunggal)
+            resultContent.appendChild(makeEl('span', 'badge ' + meta.badgeClass, meta.label));
+            if (advice.ringkasan) {
+                resultContent.appendChild(makeEl('p', 'status-summary', advice.ringkasan));
+            }
+
+            // 2. Ciri yang perlu diwaspadai (hanya jika ada)
+            const flags = Array.isArray(data.red_flags)
+                ? data.red_flags
+                    .filter(function (flag) { return flag && flag.label; })
+                    .slice(0, 5)
+                : [];
+            if (flags.length) {
+                const section = makeEl('section', 'result-section');
+                section.appendChild(makeEl('h3', 'result-section-title', 'Ciri yang perlu diwaspadai'));
+                const list = makeEl('ul', 'flag-list');
+                flags.forEach(function (flag) {
+                    const item = makeEl('li', 'flag-item');
+                    item.appendChild(makeWarningIcon());
+                    item.appendChild(makeEl('span', '', flag.label));
+                    list.appendChild(item);
+                });
+                section.appendChild(list);
+                resultContent.appendChild(section);
+            }
+
+            // 3. Bar probabilitas (detail model; eksperimental saat model belum teruji)
+            const probSection = makeEl('section', 'result-section');
+            probSection.appendChild(makeEl('h3', 'result-section-title', 'Probabilitas' + (!MODEL_RELIABLE ? '  (detail model — eksperimental)' : '')));
+            const bars = makeEl('div', 'prob-bars');
+            bars.appendChild(makeProbRow('Valid', real, 'real-fill'));
+            bars.appendChild(makeProbRow('Hoaks', fake, 'fake-fill'));
+            probSection.appendChild(bars);
+            resultContent.appendChild(probSection);
+
+            // 4. Kata-kata penting (XAI)
+            const influences = Array.isArray(data.key_influences) ? data.key_influences : [];
+            if (influences.length) {
+                const section = makeEl('section', 'result-section');
+                section.appendChild(makeEl('h3', 'result-section-title', 'Kata-kata penting'));
+                const wrap = makeEl('div', 'keywords');
+                influences.forEach(function (item) {
+                    const indicator = item.indicator === 'fake' ? 'fake' : 'real';
+                    const weight = Number(item.weight) || 0;
+                    const pill = makeEl(
+                        'span',
+                        'keyword-pill ' + indicator,
+                        String(item.token) + ' ' + (weight > 0 ? '+' : '') + weight.toFixed(2)
+                    );
+                    wrap.appendChild(pill);
+                });
+                section.appendChild(wrap);
+                section.appendChild(makeEl('p', 'keywords-note', 'Kata yang paling memengaruhi hasil model.'));
+                resultContent.appendChild(section);
+            } else if (data.key_influences_note) {
+                const section = makeEl('section', 'result-section');
+                section.appendChild(makeEl('h3', 'result-section-title', 'Kata-kata penting'));
+                section.appendChild(makeEl('p', 'keywords-note', data.key_influences_note));
+                resultContent.appendChild(section);
+            }
+
+            // 5. Saran + cek sendiri
+            const adviceSection = makeEl('section', 'result-section');
+            adviceSection.appendChild(makeEl('h3', 'result-section-title', 'Saran'));
+            adviceSection.appendChild(makeEl('p', 'advice-text', advice.saran || ''));
+
+            const selfCheck = makeEl('div', 'self-check');
+            selfCheck.appendChild(makeEl('div', 'self-check-title', 'Cek sendiri'));
+            const linkRow = makeEl('div', 'self-check-links');
+            [
+                { text: 'turnbackhoax.id', href: 'https://turnbackhoax.id' },
+                { text: 'cekfakta.com', href: 'https://cekfakta.com' }
+            ].forEach(function (link) {
+                const anchor = makeEl('a', '', link.text);
+                anchor.href = link.href;
+                anchor.target = '_blank';
+                anchor.rel = 'noopener noreferrer';
+                linkRow.appendChild(anchor);
+            });
+            linkRow.appendChild(makeEl('span', 'self-check-static', 'Situs resmi instansi terkait'));
+            selfCheck.appendChild(linkRow);
+            adviceSection.appendChild(selfCheck);
+            resultContent.appendChild(adviceSection);
+
+            // 6. Catatan batas sistem (selalu tampil)
+            let systemNote = 'Hasil ini indikasi awal dari analisis pola bahasa, bukan pemeriksaan fakta.';
+            if (data.language_warning) {
+                systemNote += ' Model dilatih dengan data bahasa Inggris, sehingga hasil untuk teks Indonesia kurang andal.';
+            }
+            resultContent.appendChild(makeEl('p', 'system-note', systemNote));
+
+            // 7. Tombol masukan
+            feedbackBtns.innerHTML = '';
+            const isUncertain = status === 'belum_dapat_disimpulkan';
+            if (isUncertain) {
+                feedbackBtns.appendChild(makeEl('div', 'feedback-title', 'Menurut Anda, ini sebenarnya:'));
+            }
+            const options = [];
+            if (!isUncertain) {
+                options.push({
+                    label: 'Ya, benar',
+                    cls: 'yes',
+                    value: data.label_code === 1 ? 1 : 0
+                });
+            }
+            options.push({ label: 'Sebenarnya valid', cls: 'maybe', value: 0 });
+            options.push({ label: 'Sebenarnya hoaks', cls: 'no', value: 1 });
+
+            options.forEach(function (opt) {
+                const btn = makeEl('button', 'feedback-btn ' + opt.cls, opt.label);
+                btn.type = 'button';
+                btn.addEventListener('click', function () { sendFeedback(opt.value); });
+                feedbackBtns.appendChild(btn);
+            });
+
+            lastAnalyzed = { text: text, labelCode: data.label_code };
+        }
+
+        // --- Kirim masukan ---
+        async function sendFeedback(label) {
+            if (!lastAnalyzed || !lastAnalyzed.text) return;
 
             try {
                 const response = await fetch('/feedback', {
@@ -256,124 +1247,55 @@
                 const data = await response.json();
 
                 if (!response.ok || data.error) {
-                    throw new Error(data.error || 'Gagal menyimpan feedback.');
+                    showFeedbackMessage(
+                        pesanError(response.status, data, 'Masukan gagal disimpan. Coba lagi.'),
+                        true
+                    );
+                    return;
                 }
 
-                feedbackButtons.classList.add('hidden');
-                feedbackMessage.className = "text-xs mt-2 text-emerald-400";
-                feedbackMessage.textContent = `✔ Feedback tersimpan (${data.total_feedback_samples} total). Jalankan "python train_model.py" agar model belajar dari koreksi ini.`;
-            } catch (err) {
-                feedbackMessage.className = "text-xs mt-2 text-rose-400";
-                feedbackMessage.textContent = err.message;
+                showFeedbackMessage('Terima kasih, masukan Anda tersimpan.');
+            } catch (error) {
+                showFeedbackMessage('Gagal menyimpan masukan. Coba lagi.', true);
             }
-            feedbackMessage.classList.remove('hidden');
         }
 
-        newsInput.addEventListener('input', () => {
-            charCount.textContent = `${newsInput.value.length} chars`;
+        function showFeedbackMessage(message, isError) {
+            const oldMsg = document.getElementById('feedback-message');
+            if (oldMsg) oldMsg.remove();
+
+            const msg = makeEl(
+                'div',
+                'feedback-message' + (isError ? ' is-error' : ''),
+                message
+            );
+            msg.id = 'feedback-message';
+            msg.setAttribute('role', isError ? 'alert' : 'status');
+            resultBox.appendChild(msg);
+        }
+
+        function showError(message) {
+            resetResult();
+            emptyState.style.display = 'none';
+            resultBox.classList.add('is-solid');
+            resultContent.classList.add('is-visible');
+            resultContent.innerHTML = '';
+
+            const msg = makeEl('div', 'error-message', message);
+            msg.setAttribute('role', 'alert');
+            resultContent.appendChild(msg);
+        }
+
+        btnCheck.addEventListener('click', submitPrediction);
+
+        textarea.addEventListener('keydown', function (event) {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+                event.preventDefault();
+                submitPrediction();
+            }
         });
 
-        function loadSample(id) {
-            newsInput.value = samples[id];
-            charCount.textContent = `${newsInput.value.length} chars`;
-            errorBox.classList.add('hidden');
-        }
-
-        function clearInput() {
-            newsInput.value = '';
-            charCount.textContent = '0 chars';
-            errorBox.classList.add('hidden');
-            resultCard.classList.add('hidden');
-            lastAnalyzed = null;
-        }
-
-        async function classifyNews() {
-            const text = newsInput.value.trim();
-            errorBox.classList.add('hidden');
-
-            if (text.length < 10) {
-                errorBox.textContent = "Please enter at least 10 characters of news text.";
-                errorBox.classList.remove('hidden');
-                return;
-            }
-
-            submitBtn.disabled = true;
-            submitBtn.classList.add('opacity-75');
-            btnIcon.classList.add('animate-spin');
-
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: text })
-                });
-
-                const data = await response.json();
-
-                if (!response.ok || data.error) {
-                    throw new Error(data.error || 'Failed to process news text.');
-                }
-
-                displayResult(data);
-            } catch (err) {
-                errorBox.textContent = err.message;
-                errorBox.classList.remove('hidden');
-                resultCard.classList.add('hidden');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.classList.remove('opacity-75');
-                btnIcon.classList.remove('animate-spin');
-            }
-        }
-
-        function displayResult(data) {
-            const isFake = data.prediction === 'Fake';
-            
-            resultCard.className = isFake
-                ? "mt-6 p-6 rounded-2xl border bg-rose-950/20 border-rose-800/50 shadow-lg shadow-rose-950/30"
-                : "mt-6 p-6 rounded-2xl border bg-emerald-950/20 border-emerald-800/50 shadow-lg shadow-emerald-950/30";
-
-            document.getElementById('badgeIcon').textContent = isFake ? '🚨' : '✅';
-            const badgeLabel = document.getElementById('badgeLabel');
-            badgeLabel.textContent = isFake ? 'SUSPECTED FAKE' : 'LIKELY REAL';
-            badgeLabel.className = isFake 
-                ? "text-3xl font-extrabold tracking-tight text-rose-400"
-                : "text-3xl font-extrabold tracking-tight text-emerald-400";
-
-            document.getElementById('confidenceText').textContent = `${data.confidence}%`;
-            document.getElementById('probRealText').textContent = `${data.probability_real}%`;
-            document.getElementById('probFakeText').textContent = `${data.probability_fake}%`;
-            document.getElementById('wordCount').textContent = data.word_count;
-            document.getElementById('thresholdText').textContent = (data.decision_threshold ?? 0.5).toFixed(2);
-
-            document.getElementById('probRealBar').style.width = `${data.probability_real}%`;
-            document.getElementById('probFakeBar').style.width = `${data.probability_fake}%`;
-
-            // Render XAI Tokens
-            keywordPills.innerHTML = '';
-            if (data.key_influences && data.key_influences.length > 0) {
-                data.key_influences.forEach(item => {
-                    const pill = document.createElement('span');
-                    const isFakeToken = item.indicator === 'fake';
-                    pill.className = isFakeToken
-                        ? "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-rose-900/40 text-rose-300 border border-rose-700/50"
-                        : "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-emerald-900/40 text-emerald-300 border border-emerald-700/50";
-                    
-                    pill.innerHTML = `
-                        <span>${item.token}</span>
-                        <span class="text-[10px] opacity-75 font-mono">${item.weight > 0 ? '+' : ''}${item.weight}</span>
-                    `;
-                    keywordPills.appendChild(pill);
-                });
-            } else {
-                keywordPills.innerHTML = '<span class="text-xs text-slate-500 italic">No strong polar keywords detected in vocabulary.</span>';
-            }
-
-            lastAnalyzed = { text: newsInput.value.trim(), predictionCode: data.label_code };
-            resetFeedbackUi();
-
-            resultCard.classList.remove('hidden');
-        }
+        updateCharCount();
     </script>
 </body>
 </html>

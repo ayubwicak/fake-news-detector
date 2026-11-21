@@ -146,5 +146,36 @@
     "Only 593 samples; confidence intervals are wide.",
     "TF-IDF captures lexical patterns, not deep semantics.",
     "Regional languages are not supported by this model."
-  ]
+  ],
+  "holdout_evaluation": {
+    "holdout_path": "data/real_news_holdout_id.csv",
+    "holdout_samples": 35,
+    "threshold": 0.31,
+    "accuracy": 0.45714285714285713,
+    "roc_auc": 0.3333333333333333,
+    "precision_real": 1.0,
+    "recall_real": 0.05,
+    "f1_score_real": 0.09523809523809523,
+    "precision_fake": 0.4411764705882353,
+    "recall_fake": 1.0,
+    "f1_score_fake": 0.6122448979591837,
+    "confusion_matrix": [
+      [
+        1,
+        19
+      ],
+      [
+        0,
+        15
+      ]
+    ],
+    "gray_zone_pct": 97.14285714285714,
+    "below_30_pct": 2.857142857142857,
+    "above_70_pct": 0.0,
+    "mean_fake_probability": 0.4656,
+    "false_positive_rate": 0.95,
+    "false_negative_rate": 0.0,
+    "note": "Hold-out artikel asli (tulis ulang, 20 Real + 15 Hoax), tidak pernah digunakan dalam pelatihan atau tuning threshold. Akurasi di bawah 85% — model TIDAK andal untuk berita Indonesia.",
+    "holdout_evaluated_at": "2026-11-21T03:39:53.333927+00:00"
+  }
 }
