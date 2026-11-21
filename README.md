@@ -2,15 +2,18 @@
 
 A production-grade Machine Learning web application that classifies news articles as **Real** or **Fake**, trained on **40.449 English news articles**, with **leakage-free methodology**, **Explainable AI (XAI)**, and a **human feedback loop**.
 
-**Test set performance (8.091 unseen articles):**
+**Test set performance (8.091 unseen berita Bahasa Inggris, dalam distribusi):**
 
-| Metric | Score |
-|--------|-------|
-| Accuracy | **97.52%** |
-| ROC-AUC | **0.9948** |
-| Fake Precision | **0.97** |
-| Fake Recall | **0.98** |
-| Fake F1-Score | **0.97** |
+| Metrik | Nilai | Catatan |
+|--------|-------|---------|
+| Akurasi | **97.52%** | Hanya berlaku untuk uji Bahasa Inggris dalam distribusi (dataset GonzaloA/fake_news), **bukan** untuk Bahasa Indonesia. |
+| ROC-AUC | **0.9948** | Bahasa Inggris, dalam distribusi. |
+| Fake Precision | **0.97** | Bahasa Inggris, dalam distribusi. |
+| Fake Recall | **0.98** | Bahasa Inggris, dalam distribusi. |
+| Fake F1-Score | **0.97** | Bahasa Inggris, dalam distribusi. |
+
+> ⚠️ **Status keandalan model Bahasa Indonesia (Saring Berita)**
+> Model Bahasa Indonesia **tidak dianggap andal** untuk deteksi hoaks produksi. Pada TAHAP 2, akurasi hold-out Indonesia terbaik adalah **67,96%** (Sentence-Transformer + LogisticRegression pada 103 contoh hold-out independen), yang masih sangat di bawah ambang **85%**. Oleh karena itu `MODEL_RELIABLE=false` dan setiap prediksi disertai peringatan "Hasil eksperimental". Jangan mengklaim model ini andal. Lihat `TAHAP4_REPORT.md`, `TAHAP_A_REPORT.md`, dan `models/model_card_id.md` untuk detail metrik serta penilaian jujur.
 
 ---
 
@@ -341,3 +344,17 @@ The API returns the top influential unigrams/bigrams per prediction, rendered in
 - TF-IDF + linear models capture lexical patterns, not deep semantics.
 - Dataset labels are inherited from the source; real-world drift requires periodic retraining.
 - The model should assist — not replace — human fact-checking.
+
+### Model Bahasa Indonesia — status keandalan (Saring Berita)
+
+- Model Indonesia **tidak dianggap andal** untuk deteksi hoaks produksi. Akurasi hold-out Indonesia terbaik = **67,96%** (103 contoh independen), sangat di bawah ambang **85%**.
+- `MODEL_RELIABLE=false`; setiap prediksi Indonesia disertai peringatan "Hasil eksperimental — model ini belum teruji cukup".
+- Tidak ada konfounding sumber sempurna (kelas valid dan hoak ada di kedua sumber), tetapi satu sumber (Rifky/turnbackhoax.id) mendominasi data latih (7.940 dari 8.487 baris), sehingga ada risiko bias gaya sumber ringan.
+- Interval kepercayaan 95% (Wilson) antar model tumpang tindih, jangan memilih model berdasarkan selisih akurasi kecil.
+
+### Fitur pencocokan klaim hoaks yang sudah dibantah (TAHAP B)
+
+- Untuk teks Indonesia, sistem mencocokkan kalimat input dengan indeks judul klaim hoak yang sudah dibantah (turnbackhoax.id) melalui embedding multibahasa.
+- Hasil pencocokan **bukan bukti** bahwa teks adalah hoaks; kemiripan teks hanya indikasi. Buka tautan klarifikasi untuk verifikasi lengkap.
+- Ambang kemiripan (0,66) ditetapkan pada validasi hold-out v2 agar false match pada berita valid rendah (3,51%), dengan presisi pencocokan 86,67% dan recall hoak 28,26%.
+- Hanya judul + tautan sumber yang disimpan; tidak ada teks penuh artikel berhak cipta.
