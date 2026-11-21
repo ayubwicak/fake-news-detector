@@ -9,7 +9,14 @@ data/test.csv
 data/fake-news.zip
 data/raw_*.csv
 data/feedback.csv
+data/holdout_id_v3.csv
 models/*.pkl
+models/*.npy
+models/hoax_index_meta.json
 models/best_params.json
+models/indobert/
 .pytest_cache/
 .ipynb_checkpoints/
+# Cache model embeddings (tidak masuk ke repo)
+.cache/
+**/.cache/

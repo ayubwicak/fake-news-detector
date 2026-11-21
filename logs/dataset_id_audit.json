@@ -1,128 +1,245 @@
 {
-  "source": "Mendeley p3hfgr5j3m / ICTS 2017 (Pratiwi et al.)",
-  "licence": "CC BY 4.0",
+  "generated_at": "2026-11-21T04:13:34.073970+00:00",
+  "sources_attempted": [
+    {
+      "name": "Mendeley ICTS-2017",
+      "url": "https://data.mendeley.com/datasets/p3hfgr5j3m/1",
+      "licence": "CC BY 4.0",
+      "rows_loaded": 547
+    },
+    {
+      "name": "BRIN Indonesia Political Hoax",
+      "url": "https://data.mendeley.com/datasets/mzx5rd397v/1",
+      "licence": "CC BY 4.0",
+      "rows_loaded": 0
+    },
+    {
+      "name": "HF id-hoax-report-merge",
+      "url": "https://huggingface.co/datasets/nlp-brin-id/id-hoax-report-merge",
+      "licence": "MIT",
+      "rows_loaded": 0
+    },
+    {
+      "name": "HF Rifky/indonesian-hoax-news",
+      "url": "https://huggingface.co/datasets/Rifky/indonesian-hoax-news",
+      "licence": "no dataset card (public)",
+      "rows_loaded": 7940
+    },
+    {
+      "name": "Manual hold-out",
+      "url": "internal",
+      "licence": "original (author-written)",
+      "rows_loaded": 103
+    }
+  ],
+  "sources_available_but_requiring_auth": [
+    {
+      "name": "Kaggle: Indonesian Hoax News Dataset (Kominfo)",
+      "url": "https://www.kaggle.com/datasets/ireddragonicy/indonesian-hoax-news-dataset",
+      "licence": "Apache 2.0",
+      "note": "requires Kaggle login"
+    },
+    {
+      "name": "Kaggle: Deteksi Berita Hoaks Indo",
+      "url": "https://www.kaggle.com/datasets/mochamadabdulazis/deteksi-berita-hoaks-indo-dataset",
+      "licence": "Custom (research and education only)",
+      "note": "requires Kaggle login"
+    },
+    {
+      "name": "Kaggle: Indonesian Fact and Hoax Political News",
+      "url": "https://www.kaggle.com/datasets/linkgish/indonesian-fact-and-hoax-political-news",
+      "licence": "MIT",
+      "note": "requires Kaggle login"
+    },
+    {
+      "name": "HF: Rifky/indonesian-hoax-news",
+      "url": "https://huggingface.co/datasets/Rifky/indonesian-hoax-news",
+      "licence": "no dataset card",
+      "note": "17,806 rows, requires HF login"
+    }
+  ],
   "raw": {
     "label": "raw",
-    "total_rows": 600,
+    "total_rows": 18406,
     "label_counts": {
-      "valid_real_0": 372,
-      "hoax_fake_1": 228
+      "valid_real_0": 5815,
+      "hoax_fake_1": 12591
     },
     "signal_prevalence_pct": {
       "url": {
         "valid_real": {
           "count": 4,
-          "pct": 1.08
+          "pct": 0.07
         },
         "hoax_fake": {
-          "count": 2,
-          "pct": 0.88
+          "count": 4,
+          "pct": 0.03
+        }
+      },
+      "label_prefix": {
+        "valid_real": {
+          "count": 550,
+          "pct": 9.46
+        },
+        "hoax_fake": {
+          "count": 12355,
+          "pct": 98.13
         }
       },
       "meta_hoax": {
         "valid_real": {
-          "count": 129,
-          "pct": 34.68
+          "count": 1992,
+          "pct": 34.26
         },
         "hoax_fake": {
-          "count": 14,
-          "pct": 6.14
+          "count": 36,
+          "pct": 0.29
         }
       },
       "meta_debunk": {
         "valid_real": {
-          "count": 0,
-          "pct": 0.0
+          "count": 139,
+          "pct": 2.39
         },
         "hoax_fake": {
-          "count": 0,
-          "pct": 0.0
+          "count": 2,
+          "pct": 0.02
         }
       },
       "klarifikasi": {
         "valid_real": {
-          "count": 39,
-          "pct": 10.48
+          "count": 867,
+          "pct": 14.91
         },
         "hoax_fake": {
-          "count": 19,
-          "pct": 8.33
+          "count": 21,
+          "pct": 0.17
         }
       },
       "baca_juga": {
         "valid_real": {
           "count": 11,
-          "pct": 2.96
+          "pct": 0.19
         },
         "hoax_fake": {
           "count": 5,
-          "pct": 2.19
+          "pct": 0.04
         }
       },
       "turnbackhoax": {
         "valid_real": {
-          "count": 0,
-          "pct": 0.0
+          "count": 2374,
+          "pct": 40.83
         },
         "hoax_fake": {
-          "count": 0,
-          "pct": 0.0
+          "count": 6837,
+          "pct": 54.3
         }
       },
       "detik": {
         "valid_real": {
-          "count": 13,
-          "pct": 3.49
+          "count": 27,
+          "pct": 0.46
         },
         "hoax_fake": {
-          "count": 4,
-          "pct": 1.75
+          "count": 87,
+          "pct": 0.69
         }
       },
       "kompas": {
         "valid_real": {
+          "count": 18,
+          "pct": 0.31
+        },
+        "hoax_fake": {
+          "count": 21,
+          "pct": 0.17
+        }
+      },
+      "tribun": {
+        "valid_real": {
           "count": 7,
-          "pct": 1.88
+          "pct": 0.12
+        },
+        "hoax_fake": {
+          "count": 14,
+          "pct": 0.11
+        }
+      },
+      "cnn": {
+        "valid_real": {
+          "count": 9,
+          "pct": 0.15
+        },
+        "hoax_fake": {
+          "count": 20,
+          "pct": 0.16
+        }
+      },
+      "republika": {
+        "valid_real": {
+          "count": 13,
+          "pct": 0.22
+        },
+        "hoax_fake": {
+          "count": 6,
+          "pct": 0.05
+        }
+      },
+      "antara": {
+        "valid_real": {
+          "count": 1,
+          "pct": 0.02
+        },
+        "hoax_fake": {
+          "count": 1,
+          "pct": 0.01
+        }
+      },
+      "dateline": {
+        "valid_real": {
+          "count": 2383,
+          "pct": 40.98
+        },
+        "hoax_fake": {
+          "count": 4960,
+          "pct": 39.39
+        }
+      }
+    },
+    "valid_real": {
+      "length_median": 78,
+      "length_min": 15,
+      "length_max": 9618
+    },
+    "hoax_fake": {
+      "length_median": 77,
+      "length_min": 20,
+      "length_max": 8573
+    },
+    "exact_duplicate_texts": 104,
+    "unique_texts": 18302,
+    "conflicting_label_texts": 0
+  },
+  "clean_deduped": {
+    "label": "clean_deduped",
+    "total_rows": 8487,
+    "label_counts": {
+      "valid_real_0": 3890,
+      "hoax_fake_1": 4597
+    },
+    "signal_prevalence_pct": {
+      "url": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
         },
         "hoax_fake": {
           "count": 0,
           "pct": 0.0
         }
       },
-      "tribun": {
-        "valid_real": {
-          "count": 4,
-          "pct": 1.08
-        },
-        "hoax_fake": {
-          "count": 5,
-          "pct": 2.19
-        }
-      }
-    },
-    "valid_real": {
-      "length_median": 1883,
-      "length_min": 543,
-      "length_max": 9618
-    },
-    "hoax_fake": {
-      "length_median": 2097,
-      "length_min": 668,
-      "length_max": 8573
-    },
-    "exact_duplicate_texts": 0,
-    "unique_texts": 600,
-    "conflicting_label_texts": 0
-  },
-  "clean_deduped": {
-    "label": "clean_deduped",
-    "total_rows": 593,
-    "label_counts": {
-      "valid_real_0": 368,
-      "hoax_fake_1": 225
-    },
-    "signal_prevalence_pct": {
-      "url": {
+      "label_prefix": {
         "valid_real": {
           "count": 0,
           "pct": 0.0
@@ -144,32 +261,32 @@
       },
       "meta_debunk": {
         "valid_real": {
-          "count": 0,
-          "pct": 0.0
+          "count": 1,
+          "pct": 0.03
         },
         "hoax_fake": {
-          "count": 0,
-          "pct": 0.0
+          "count": 1,
+          "pct": 0.02
         }
       },
       "klarifikasi": {
         "valid_real": {
-          "count": 39,
-          "pct": 10.6
+          "count": 644,
+          "pct": 16.56
         },
         "hoax_fake": {
           "count": 19,
-          "pct": 8.44
+          "pct": 0.41
         }
       },
       "baca_juga": {
         "valid_real": {
           "count": 4,
-          "pct": 1.09
+          "pct": 0.1
         },
         "hoax_fake": {
           "count": 1,
-          "pct": 0.44
+          "pct": 0.02
         }
       },
       "turnbackhoax": {
@@ -184,12 +301,12 @@
       },
       "detik": {
         "valid_real": {
-          "count": 4,
-          "pct": 1.09
+          "count": 12,
+          "pct": 0.31
         },
         "hoax_fake": {
-          "count": 2,
-          "pct": 0.89
+          "count": 30,
+          "pct": 0.65
         }
       },
       "kompas": {
@@ -211,29 +328,80 @@
           "count": 0,
           "pct": 0.0
         }
+      },
+      "cnn": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "republika": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "antara": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
+      },
+      "dateline": {
+        "valid_real": {
+          "count": 0,
+          "pct": 0.0
+        },
+        "hoax_fake": {
+          "count": 0,
+          "pct": 0.0
+        }
       }
     },
     "valid_real": {
-      "length_median": 1792,
-      "length_min": 523,
-      "length_max": 9398
+      "length_median": 72,
+      "length_min": 50,
+      "length_max": 9380
     },
     "hoax_fake": {
-      "length_median": 2022,
-      "length_min": 635,
+      "length_median": 69,
+      "length_min": 50,
       "length_max": 8375
     },
     "exact_duplicate_texts": 0,
-    "unique_texts": 593,
+    "unique_texts": 8487,
     "conflicting_label_texts": 0
   },
+  "source_x_label": {
+    "HF/Rifky/indonesian-hoax-news": {
+      "0": 3556,
+      "1": 4384
+    },
+    "Mendeley/ICTS-2017": {
+      "0": 334,
+      "1": 213
+    }
+  },
   "cleaning": [
-    "remove URLs, HTML, e-mail addresses",
-    "remove portal boilerplate (baca juga, editor, penulis, tags, sumber)",
-    "remove agency markers (detikcom, kompas, tribun, ...)",
-    "remove label-leaking meta words (hoax, hoaks, fake news, debunk, ...)",
-    "lowercase, keep a-z only, collapse whitespace",
-    "deduplicate on cleaned text"
+    "strip label prefixes ([SALAH], [BENAR], HOAX:, FAKTA:, ...)",
+    "remove news-agency / portal markers (detik, kompas, tribun, ...)",
+    "remove datelines and dates",
+    "remove URLs and links",
+    "remove label-leaking meta words (hoax, hoaks, debunk, cek fakta, klarifikasi)",
+    "NFKC normalisation, lowercase, keep a-z only, collapse whitespace",
+    "near-duplicate deduplication (5-gram Jaccard > 0.85)"
   ],
   "label_mapping": {
     "Valid": 0,
