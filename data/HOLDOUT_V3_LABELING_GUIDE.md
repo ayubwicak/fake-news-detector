@@ -1,49 +1,85 @@
 # Panduan Pelabelan Hold-out v3 (Saring Berita)
 
-## Tujuan
-Hold-out v3 adalah satu set independen (>= 100 contoh, seimbang antara valid dan hoaks) yang **TIDAK** digunakan untuk pelatihan, tuning threshold, atau pemilihan model. Digunakan hanya untuk laporan akurasi akhir yang jujur.
+Hold-out v3 adalah **satu-satunya** set yang boleh dipakai untuk laporan akurasi akhir.
+Set ini **TIDAK** dipakai untuk training, tuning ambang, pemilihan model, atau kalibrasi.
+Skrip evaluasi hanya boleh dijalankan **sekali** (lihat `scripts/evaluate_on_holdout_v3.py`).
 
-## Siapa yang memberi label
-Label diberikan secara **manual oleh pengguna/pelaku proyek** (bukan otomatis dari dataset publik), agar hold-out benar-benar independen dari data latih.
+> File kerja: `data/holdout_id_v3.csv` (di-gitignore karena memuat teks).
+> Yang boleh di-commit: `data/holdout_id_v3_links_template.csv` (hanya tautan + label, tanpa teks).
+> **Jangan** mengisi `data/holdout_id_v3.csv` otomatis; label dan teks harus berasal
+> dari pembaca manusia. Proyek ini sengaja tidak menyediakan contoh teks berlabel
+> di file csv untuk menghindari label ikut "dipraktekkan" ke model.
 
-## Sumber contoh
-Contoh boleh ditulis ulang sendiri (parafrase) atau diambil dari berita publik, dengan syarat:
-- Jika mengambil dari artikel berhak cipta: simpan hanya **judul + tautan sumber + ringkasan pendek**, jangan teks penuh artikel.
-- Isi kolom `sumber_url` dengan tautan asli jika ada.
-- Isi kolom `tanggal` (format YYYY-MM-DD) jika diketahui.
-- Isi kolom `catatan` dengan keterangan tambahan (topik, alasannya diberi label tersebut, dll.).
+## 1. Definisi operasional label
 
-## Kolom CSV (`data/holdout_id_v3_template.csv`)
+| Label | Nama | Definisi operasional (harus memenuhi SEMUA) |
+|---|---|---|
+| `1` | **Hoaks** | Klaim/pernyataan yang **sudah dibantah** oleh pemeriksa fakta bersertifikat / lembaga resmi (MAFINDO, turnbackhoax.id, cekfakta.com, Kominfo, lembaga pemerintah, atau media tepercaya dengan artikel klarifikasi). **Wajib** mengisi `bukti_url` berisi tautan bantahan. Tanpa tautan bantahan → jangan beri label 1. |
+| `0` | **Valid** | Informasi yang **diberitakan media terverifikasi Dewan Pers** ATAU pernyataan resmi lembaga pemerintah/Instansi, **dan tidak ada bantahan** yang ditemukan. Isi `sumber_url`/`nama_sumber` dengan jelas. |
 
-| Kolom | Deskripsi | Contoh |
-|-------|-----------|--------|
-| `text` | Teks berita/pernyataan yang akan diprediksi (min. 10 karakter) | "JAKARTA - Kementerian Kesehatan..." |
-| `label` | 0 = Valid/Real, 1 = Hoax/Fake | 0 atau 1 |
-| `sumber_url` | Tautan sumber asli (kosong boleh) | https://turnbackhoax.id/... |
-| `tanggal` | Terbit (YYYY-MM-DD, kosong boleh) | 2026-11-20 |
-| `catatan` | Keterangan tambahan (topik, alasannya label, dll.) | Pemerintah / Kesehatan |
+Kunci: label didasarkan pada **status verifikasi eksternal**, bukan pada kesan gaya bahasa.
 
-## Kriteria label
+## 2. Kasus abu-abu → keluar dari set
 
-### Label 0 — Valid/Real
-- Berita yang dipublikasikan oleh media terpercaya dan dapat diverifikasi.
-- Pernyataan resmi lembaga pemerintah/instansi.
-- Tidak mengandung klaim medis misterius, tekanan waktu, atau ajakan menyebar tanpa dasar.
+Jangan memaksa label untuk kasus berikut; **buang barisnya**:
 
-### Label 1 — Hoax/Fake
-- Klaim yang telah dibantah oleh turnbackhoax.id, cekfakta.com, MAFINDO, atau lembaga serupa.
-- Klaim medis aneh (obat ajaib, mencegah semua penyakit, dll.) tanpa bukti ilmiah.
-- Rantai pesan (chain message) dengan ancaman/tekanan waktu.
-- Klaim yang tidak dapat diverifikasi ke sumber resmi.
+- **Satire, parodi, lelucon, fiksi, iklan dengan jelas** — bukan hoaks menurut definisi di atas.
+- **Opini/analisis/editorial** — tidak bisa dibantah benar/salah sebagai klaim faktual.
+- **Klaim belum terverifikasi / masih diperdebatkan** — belum ada bantahan resmi; tunggu sampai ada.
+- **Klaim lama yang sudah diklarifikasi tapi bantahannya tidak bisa diakses** — tidak memenuhi syarat bukti.
+- **Terjemahan mesin / ringkasan otomatis** — bukan teks sumber manusia.
+- Teks dengan **data pribadi** (nama lengkap + alamat/telepon/NIK) — jangan disimpan.
 
-## Persyaratan kuantitas
-- Minimal 100 baris.
-- Seimbang: sekitar 50 valid / 50 hoaks (toleransi ±10).
-- Beragam topik (pemerintahan, kesehatan, lingkungan, perdagangan, pendidikan, dll.).
-- Beragam panjang (judul pendek, paragraf, artikel panjang, pesan rantai).
+## 3. Syarat komposisi set (divalidasi otomatis)
 
-## Aturan penting
-1. **Jangan** salin teks penuh artikel berhak cipta secara massal.
-2. Hold-out v3 **tidak boleh** digunakan untuk tuning threshold atau pemilihan model.
-3. Simpan hasil pelabelan di `data/holdout_id_v3.csv` (dibuat dari template ini).
-4. Laporan akhir harus menyebutkan siapa yang memberi label dan tanggal pelabelan.
+1. Minimal **100 baris**, dengan keseimbangan ±10: untuk n = 100, masing-masing kelas 40–60.
+2. Minimal **8 sumber berbeda untuk kelas valid DAN 8 sumber berbeda untuk kelas hoaks**.
+3. **Tidak ada satu sumber pun > 20%** dari total baris.
+4. Rentang `tanggal_terbit` minimal **12 bulan** (YYYY-MM-DD).
+5. Topik harus mencakup kelima kategori: **politik, kesehatan, ekonomi, bencana, penipuan_daring**
+   (nama bebas, tetapi kelima maknanya harus hadir).
+6. Bentuk teks harus mencakup keempat: **judul, paragraf, artikel, pesan_berantai**.
+7. Panjang `text` **10–600 karakter** — cukup ringkasan/kutipan pendek + tautan.
+   **Jangan menyalin artikel penuh berhak cipta.**
+8. Tidak boleh ada duplikat atau near-duplicate (cosine ≥ 0,90) terhadap data latih,
+   hold-out v2, maupun indeks judul hoak (`scripts/validate_holdout_v3.py` akan mengecek).
+
+## 4. Kolom CSV
+
+Wajib: `id, text, label, sumber_url, nama_sumber, tanggal_terbit, topik, bentuk, bukti_url, catatan`.
+Opsional (disarankan untuk pelabelan ganda): `label_anotator1, label_anotator2`.
+
+| Kolom | Isi |
+|---|---|
+| `id` | ID unik (mis. `v3-001`) |
+| `text` | Ringkasan/kutipan pendek maks. 600 karakter, ditulis ulang bila perlu |
+| `label` | `0` = valid, `1` = hoaks (label final setelah rekonsiliasi) |
+| `sumber_url` | Tautan artikel/asal informasi (boleh kosong hanya untuk pesan berantai) |
+| `nama_sumber` | Nama media/lembaga (dipakai untuk uji bias sumber) |
+| `tanggal_terbit` | `YYYY-MM-DD` |
+| `topik` | politik / kesehatan / ekonomi / bencana / penipuan_daring / lain |
+| `bentuk` | judul / paragraf / artikel / pesan_berantai |
+| `bukti_url` | Tautan bantahan (wajib untuk hoaks) atau liputan pendukung (valid) |
+| `catatan` | Alasan label, siapa pelabel, tanggal pelabelan, dll. |
+| `label_anotator1`, `label_anotator2` | Label independen dua orang; `label` diisi setelah sepakat |
+
+Simpan berkas hasil pelabelan di `data/holdout_id_v3.csv`. Jangan pernah menjalankan
+`train_model_id.py`, tuning threshold, atau pemilihan model memakai berkas ini.
+
+## 5. Alur kerja
+
+1. Salin `data/holdout_id_v3_links_template.csv` → `data/holdout_id_v3.csv` (abaikan
+   berkas yang sudah ada bila ingin mulai ulang).
+2. Isi baris satu per satu mengikuti definisi dan syarat di atas.
+3. Jalankan validator:
+   ```
+   python scripts/validate_holdout_v3.py
+   ```
+   Perbaiki semua pelanggaran sampai `status: pass`. Validator **tidak mengubah data**.
+4. Bila memakai dua anotator, jalankan `python scripts/agreement.py`, rekonsiliasi
+   baris yang tidak sepakat, lalu isi `label` final.
+5. Setelah validator lolos, jalankan **sekali**:
+   ```
+   python scripts/evaluate_on_holdout_v3.py
+   ```
+6. Laporkan siapa yang memberi label dan tanggalnya di laporan akhir.

@@ -12,6 +12,8 @@ data/raw_*.csv
 data/*_oos.csv
 data/feedback*.csv
 data/feedback.csv.bak
+# Hold-out v3 berisi teks -> JANGAN di-commit. Yang boleh masuk repo hanya
+# template tautan+label: data/holdout_id_v3_links_template.csv
 data/holdout_id_v3.csv
 models/**/*.pkl
 models/**/*.npy
