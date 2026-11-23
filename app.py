@@ -708,17 +708,6 @@ def indobert_predict_proba(text):
 from id_preprocessing import detect_language, clean_text as id_clean_text
 
 
-def clean_text(text: str) -> str:
-    """Preprocess text: remove URLs, punctuation, and lowercase."""
-    if not isinstance(text, str):
-        return ""
-    text = unicodedata.normalize('NFKC', text)
-    text = re.sub(r'http\S+|www\.\S+', '', text)
-    text = re.sub(r'[^a-zA-Z\s]', ' ', text)
-    text = re.sub(r'\s+', ' ', text)
-    return text.lower().strip()
-
-
 def parse_feedback_label(value):
     """Strictly parse a feedback label.
 

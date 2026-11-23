@@ -259,3 +259,36 @@ def test_predict_rejects_non_string_text(client, value):
     response = client.post('/predict', json={'text': value})
     assert response.status_code == 400
     assert 'must be a string' in response.get_json()['error']
+
+
+# --- Regression: training vs inference cleaning skew ---------------------------
+
+TRAINING_VS_INFERENCE_EXAMPLES = [
+    "Pemerintah Indonesia mengumumkan bantuan sosial sebesar 2 juta rupiah.",
+    "<b>BREAKING:</b> www.berita-palsu.com cara cepat kaya malam ini!!!",
+    "Admin: Hubungi 08123456789 untuk OTP rekening Anda segera.",
+    "turnbackhoax.id telah menilai klaim ini sebagai hoaks.",
+    "Selamat pagi, semoga harimu menyenangkan dan produktif.",
+    "Baca juga: artikel ini telah tayang di detikcom, editor: penulis.",
+    "Hubungi kami di admin@example.com untuk info selengkapnya.",
+    "Hoax atau hoaks? Cek fakta di cekfakta.com sebelum dibagikan.",
+    "Ｐｅｍｅｒｉｎｔａｈ　Ｉｎｄｏｎｅｓｉａ　ｍｅｎｇｕｍｕｋａｎ　ｂｅｒｉｔａ．",
+    "NASA scientists confirm rover landed on Mars (mixed English).",
+]
+
+
+def test_training_cleaning_equals_inference_cleaning():
+    """Training (id_preprocessing.clean_text) == inferensi (app.id_clean_text).
+
+    Mencegah train/serve skew: jika fungsi pembersih diubah di satu sisi,
+    tes ini akan gagal sebelum prediksi berdampak pada pengguna.
+    """
+    from id_preprocessing import clean_text as train_clean_text
+
+    for teks in TRAINING_VS_INFERENCE_EXAMPLES:
+        hasil_training = train_clean_text(teks)
+        hasil_inferensi = id_clean_text(teks)
+        assert hasil_training == hasil_inferensi, (
+            f"SKEW terdeteksi untuk {teks!r}: "
+            f"training={hasil_training!r} inferensi={hasil_inferensi!r}"
+        )
