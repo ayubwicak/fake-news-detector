@@ -49,3 +49,9 @@ Binary classification: Valid/Real (0) vs Hoax/Fake (1) Indonesian news text.
 - This threshold was selected on the **same hold-out v2 set** used for reporting, so metrics carry selection bias. Cross-validation on hold-out v2 (split A→B / B→A) shows a wide 95% Wilson CI; do not treat 0.66 as a production-calibrated value.
 - The 0.66 threshold is intentionally left unchanged. Recalibration requires an independent hold-out v3 (not yet labelled).
 - Related field `/predict` includes `debunk_available` (false when sentence-transformers or the hoak index is missing at runtime).
+
+## 📎 Pin Revisi Hugging Face (B615)
+
+INDOBERT (jika diaktifkan melalui `INSTALL_ML=true` di Docker) dimuat dari folder lokal `models/indobert/`, **bukan** langsung dari Hugging Face Hub, sehingga tidak ada risiko model berubah secara diam-diam.
+
+Bila model diunduh dari Hugging Face Hub (misalnya `indobenchmark/indobert-base-p1`), harus menggunakan **revision yang di-pin** (commit hash / tag spesifik) melalui parameter `revision=` agar build deterministik dan tidak terpengaruh pembaruan model di Hub.

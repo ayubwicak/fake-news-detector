@@ -19,14 +19,30 @@ HEADERS = {
 # Delay untuk menghindari rate limiting
 DELAY = 1  # detik
 
+# Timeout untuk setiap permintaan HTTP (mencegah terblokir secara diam-diam)
+REQUEST_TIMEOUT = 15  # detik
+
+# Catatan etika scraping (tidak dijalankan dalam CI / versi ini):
+# - Sebelum scraping, periksa robots.txt situs target dan Aturan Layanan (ToS).
+#   Jawapos: https://www.jawapos.com/robots.txt
+#   Pikiran Rakyat: https://www.pikiran-rakyat.com/robots.txt
+#   Harian Medan: https://www.harianmedan.com/robots.txt
+# - Hanya scrape jika diizinkan; patuhi crawl-delay dan batas rate.
+# - Jangan scrape data pribadi / terkunci di balik login.
+# - Skrip ini tersedia sebagai referensi saja; tidak dijalankan otomatis.
+
 
 def scrape_jawapos(max_articles=30):
-    """Scrape berita bahasa Jawa dari Jawapos.com."""
+    """Scrape berita bahasa Jawa dari Jawapos.com.
+
+    Peringatan: pastikan robots.txt dan Aturan Layanan Jawapos.com
+    mengizinkan scraping sebelum menjalankan skrip ini.
+    """
     url = "https://www.jawapos.com/"
     articles = []
     
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         
@@ -40,7 +56,7 @@ def scrape_jawapos(max_articles=30):
         # Scrape setiap artikel
         for link in article_links[:max_articles]:
             try:
-                article_response = requests.get(link, headers=HEADERS)
+                article_response = requests.get(link, headers=HEADERS, timeout=REQUEST_TIMEOUT)
                 article_response.raise_for_status()
                 article_soup = BeautifulSoup(article_response.text, "html.parser")
                 
@@ -86,7 +102,7 @@ def scrape_pikiran_rakyat(max_articles=30):
     articles = []
     
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         
@@ -100,7 +116,7 @@ def scrape_pikiran_rakyat(max_articles=30):
         # Scrape setiap artikel
         for link in article_links[:max_articles]:
             try:
-                article_response = requests.get(link, headers=HEADERS)
+                article_response = requests.get(link, headers=HEADERS, timeout=REQUEST_TIMEOUT)
                 article_response.raise_for_status()
                 article_soup = BeautifulSoup(article_response.text, "html.parser")
                 
@@ -146,7 +162,7 @@ def scrape_harian_medan(max_articles=30):
     articles = []
     
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         
@@ -160,7 +176,7 @@ def scrape_harian_medan(max_articles=30):
         # Scrape setiap artikel
         for link in article_links[:max_articles]:
             try:
-                article_response = requests.get(link, headers=HEADERS)
+                article_response = requests.get(link, headers=HEADERS, timeout=REQUEST_TIMEOUT)
                 article_response.raise_for_status()
                 article_soup = BeautifulSoup(article_response.text, "html.parser")
                 

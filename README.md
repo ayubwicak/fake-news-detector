@@ -476,3 +476,20 @@ The API returns the top influential unigrams/bigrams per prediction, rendered in
 - Ambang kemiripan (0,66) ditetapkan pada validasi hold-out v2 agar false match pada berita valid rendah (3,51%), dengan presisi pencocokan 86,67% dan recall hoak 28,26%.
 - **Catatan selection bias:** ambang 0,66 dipilih dan dievaluasi pada **hold-out v2 yang sama**, jadi metriknya terjangkau bias seleksi dan 95% Wilson CI-nya lebar. Ambang sengaja tidak diubah; rekalibrasi membutuhkan hold-out v3 independen (belum dilengkapi data).
 - Hanya judul + tautan sumber yang disimpan; tidak ada teks penuh artikel berhak cipta.
+
+### 🕷️ Review Skrip Scraping (tidak dijalankan)
+
+Skrip di `scripts/scraping/` tersedia sebagai referensi dan **tidak dijalankan** dalam build/CI. Hasil review:
+
+| Aspek | Status | Detail |
+|-------|--------|--------|
+| `robots.txt` / Aturan Layanan | ⚠️ Perlu dicek manual | Setiap skrip mencantumkan URL `robots.txt` situs target (TurnBackHoax.id, Detik, Kompas, Jawapos, Pikiran Rakyat, Harian Medan). Sebelum scrape, periksa apakah scraping diizinkan dan patuhi `crawl-delay`. |
+| Timeout | ✅ | Setiap `requests.get(...)` menggunakan `timeout=15` detik agar tidak terblokir secara diam-diam. |
+| User-Agent | ✅ | Setiap skrip mengirim User-Agent browser yang menjelaskan identitas klien. |
+| Dijalankan otomatis | ❌ Tidak | Tidak ada pemanggilan skrip scraping di `app.py`, `train_model*.py`, atau CI. Data latih berasal dari berkas yang sudah disiapkan (`scripts/prepare_dataset_id.py`), bukan scraping langsung. |
+
+### 📎 Pin Revisi Hugging Face (B615)
+
+INDOBERT (jika diaktifkan melalui `INSTALL_ML=true`) dimuat dari folder lokal `models/indobert/`, **bukan** langsung dari Hugging Face Hub, sehingga tidak ada risiko model berubah secara diam-diam.
+
+Bila suatu saat model diunduh dari Hugging Face Hub (misalnya `indobenchmark/indobert-base-p1` yang disebutkan di `models/model_card_id.md`), harus menggunakan **revision yang di-pin** (commit hash / tag spesifik) melalui parameter `revision=` agar build deterministik dan tidak terpengaruh pembaruan model di Hub.
