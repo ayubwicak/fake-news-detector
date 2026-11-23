@@ -16,10 +16,10 @@ Sumber: `logs/source_x_label.json`
 
 **Kesimpulan A.1:** Tidak ada sumber yang hanya memiliki satu kelas → **tidak ada konfounding sumber sempurna** (source–class confounding). Kedua kelas muncul di kedua sumber. Namun, data latih didominasi oleh satu sumber (Rifky/turnbackhoax.id, 7.940 dari 8.487 baris), sehingga model masih bisa belajar gaya gaya gaya gaya Rifky tanpa konfounding sempurna.
 
-## A.2 Uji Konfounder dengan Fitur Gaya Saja
+## A.2 Uji Konfounder dengan Fitur Gaya Saja (+ Bootstrap)
 
-Skrip: `scripts/audit_confounder_style.py`  
-Hasil: `logs/confounder_style.json`
+Skrip: `scripts/audit_confounder_style.py`, `scripts/audit_style_bootstrap.py`  
+Hasil: `logs/confounder_style.json`, `logs/confounder_style_bootstrap.json`
 
 Fitur gaya yang digunakan: panjang teks, jumlah kata, jumlah kalimat, kata/kalimat, rasio huruf kapital, tanda seru, tanya, dan awalan 3 kata pertama (one-hot top-20).
 
@@ -29,7 +29,11 @@ Fitur gaya yang digunakan: panjang teks, jumlah kata, jumlah kalimat, kata/kalim
 | Hold-out v2 (out-of-source) | 55,34% | 0,4668 |
 | Penurunan | 10,98% | — |
 
-**Kesimpulan A.2:** Penurunan 10,98% tidak cukup besar untuk dianggap bukti kuat konfounder sumber. Model cenderung belajar isi, bukan hanya gaya sumber — namun sumber dominan (Rifky) masih berisiko memberikan bias gaya ringan.
+Bootstrap (1.000 resampel pada hold-out v2):
+- Hold-out akurasi 95% CI: [46,60%, 65,05%]
+- Selisih in-dist vs hold-out 95% CI: **[1,27%, 19,72%]**
+
+**Kesimpulan A.2:** Selisih 10,98% dengan 95% CI **[1,27%, 19,72%] — seluruh interval di atas 0.** Ini adalah indikasi statistik bahwa model fitur-gaya belajar pola yang tidak transfer sepenuhnya ke luar distribusi (bias sumber/overfitting pada distribusi latih). Model cenderung belajar isi, bukan hanya gaya sumber, tetapi sumber dominan (Rifky = 7.940/8.487 = **93,6%**) masih memberikan risiko bias gaya yang tidak dapat disingkirkan sepenuhnya. **Tidak boleh disimpulkan "tidak ada bias sumber."**
 
 ## A.3 Interval Kepercayaan 95% (Wilson) — Akurasi Hold-out v2 (n=103)
 
@@ -64,8 +68,8 @@ File yang disiapkan:
 | Item | Temuan |
 |------|--------|
 | Konfounding sumber sempurna | Tidak ada (kedua kelas di kedua sumber) |
-| Sumber dominan bias | Ya (Rifky = 7.940/8.487 baris) |
-| Fitur gaya = bukti konfounder | Tidak conclusif (drop 10,98% only) |
+| Sumber dominan bias | Ya (Rifky = 7.940/8.487 = **93,6%**) |
+| Fitur gaya = bukti konfounder | **Ya, indikasi signifikant** (drop 10,98%; bootstrap CI selisih [1,27%, 19,72%] seluruhnya > 0) |
 | Model terbaik hold-out | 67,96% (Sent-Trans + LR) < 85% |
 | CI overlap antar model | Ya → jangan pilih model dari selisih kecil |
 | MODEL_RELIABLE | False (tetap) |
