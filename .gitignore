@@ -7,16 +7,31 @@ __pycache__/
 data/train.csv
 data/test.csv
 data/fake-news.zip
+data/raw/
 data/raw_*.csv
-data/feedback.csv
+data/*_oos.csv
+data/feedback*.csv
+data/feedback.csv.bak
+# Hold-out v3 berisi teks -> JANGAN di-commit. Yang boleh masuk repo hanya
+# template tautan+label: data/holdout_id_v3_links_template.csv
 data/holdout_id_v3.csv
-models/*.pkl
-models/*.npy
+models/**/*.pkl
+models/**/*.npy
 models/hoax_index_meta.json
 models/best_params.json
 models/indobert/
 .pytest_cache/
 .ipynb_checkpoints/
+*.parquet
 # Cache model embeddings (tidak masuk ke repo)
 .cache/
 **/.cache/
+
+.coverage
+htmlcov/
+
+# Catatan: menghapus dari pelacakan (git rm --cached) TIDAK menghapus riwayat
+# git. File besar yang sudah ter-push (rifky_indonesian_hoax.parquet,
+# train_id_oos.csv, models/id/*.pkl) masih ada di riwayat origin. Hapus dari
+# riwayat membutuhkan git filter-repo + force push ke branch sendiri (B.4),
+# yang ditunda menunggu persetujuan dan TIDAK dilakukan dalam perbaikan ini.

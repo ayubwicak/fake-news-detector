@@ -19,14 +19,28 @@ HEADERS = {
 # Delay untuk menghindari rate limiting
 DELAY = 1  # detik
 
+# Timeout untuk setiap permintaan HTTP (mencegah terblokir secara diam-diam)
+REQUEST_TIMEOUT = 15  # detik
+
+# Catatan etika scraping (tidak dijalankan dalam CI / versi ini):
+# - Sebelum scraping, periksa robots.txt situs target (contoh:
+#   https://turnbackhoax.id/robots.txt) dan Aturan Layanan (ToS).
+# - Hanya scrape jika diizinkan; patuhi crawl-delay dan batas rate.
+# - Jangan scrape data pribadi / terkunci di balik login.
+# - Skrip ini tersedia sebagai referensi saja; tidak dijalankan otomatis.
+
 
 def scrape_turnbackhoax(max_articles=50):
-    """Scrape berita hoax dari TurnBackHoax.id."""
+    """Scrape berita hoax dari TurnBackHoax.id.
+
+    Peringatan: pastikan robots.txt dan Aturan Layanan TurnBackHoax.id
+    mengizinkan scraping sebelum menjalankan skrip ini.
+    """
     url = "https://turnbackhoax.id/"
     articles = []
     
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         
@@ -47,7 +61,7 @@ def scrape_turnbackhoax(max_articles=50):
         # Scrape setiap artikel
         for link in article_links[:max_articles]:
             try:
-                article_response = requests.get(link, headers=HEADERS)
+                article_response = requests.get(link, headers=HEADERS, timeout=REQUEST_TIMEOUT)
                 article_response.raise_for_status()
                 article_soup = BeautifulSoup(article_response.text, "html.parser")
                 

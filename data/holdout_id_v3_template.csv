@@ -1,5 +1,1 @@
-text,label,sumber_url,tanggal,catatan
-"JAKARTA - Kementerian Pekerjaan Umum dan Perumahan Rakyat mengumumkan pembangunan jalan tol baru yang menghubungkan dua kota besar di Pulau Jawa. Proyek ini nilainya mencapai triliunan rupiah dan akan dikerjakan oleh konsorsium pemerintah dan swasta.",0,,,
-"SEBARKAN pesan ini segera ke semua grup agar tidak kena blokir WhatsApp!",1,,,
-"JAKARTA - Minyak kelapa dapat menyembuhkan kanker stadium 4 dalam waktu 3 hari.",1,,,
-"JAKARTA - Badan Pusat Statistik melaporkan inflasi di Indonesia menurun menjadi 3 persen dari 3,5 persen bulan lalu.",0,,,
+id,text,label,sumber_url,nama_sumber,tanggal_terbit,topik,bentuk,bukti_url,catatan,label_anotator1,label_anotator2

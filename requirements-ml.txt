@@ -1,0 +1,6 @@
+# Machine learning / heavy optional dependencies (TAHAP B + TAHAP C)
+# Pasang hanya bila fitur pencocokan klaim (sentence-transformers) atau
+# IndoBERT (torch/transformers) diperlukan. Lihat README untuk ukuran unduhan.
+sentence-transformers>=2.2.0,<7.0.0
+torch>=2.0.0,<3.0.0
+transformers>=4.30.0,<5.0.0

@@ -43,3 +43,37 @@ Binary classification: Valid/Real (0) vs Hoax/Fake (1) Indonesian news text.
 - Hold-out Indonesian accuracy is **below 85%**. The model is NOT reliable.
 - Do not claim the model is reliable for production Indonesian fake-news detection.
 - Results are research-grade and should be treated as experimental.
+
+## Debunked-claim matching threshold (TAHAP B)
+- Default threshold: **0.66** (cosine similarity against hoax index titles).
+- This threshold was selected on the **same hold-out v2 set** used for reporting, so metrics carry selection bias. Cross-validation on hold-out v2 (split A→B / B→A) shows a wide 95% Wilson CI; do not treat 0.66 as a production-calibrated value.
+- The 0.66 threshold is intentionally left unchanged. Recalibration requires an independent hold-out v3 (not yet labelled).
+- Related field `/predict` includes `debunk_available` (false when sentence-transformers or the hoak index is missing at runtime).
+
+## 🔒 Gerbang keandalan otomatis (Butir 4)
+
+`MODEL_RELIABLE` **dihitung** oleh `reliability.py` dari `logs/holdout_v3_result.json`.
+Tidak ada penulisan manual: hold-out v2 dan `models/indobert/metrics.json` **tidak**
+boleh menyetelnya lagi. Nilai `true` hanya jika **SEMUA** syarat berikut terpenuhi
+pada **hold-out v3** oleh **semua kandidat yang tersedia** (tidak ada pemilihan
+model berdasarkan angka):
+
+| Gerbang | Ambang |
+|---|---|
+| ROC-AUC | ≥ 0,85 |
+| Batas bawah interval Wilson 95% akurasi | ≥ 0,80 |
+| False-positive rate kelas valid | ≤ 0,15 |
+| Recall hoaks | ≥ 0,75 |
+| Jumlah sampel `n` | ≥ 100 |
+| Jumlah sumber berbeda | ≥ 8 |
+| Pangsa sumber terbesar | ≤ 0,20 |
+
+Bila berkas hasil belum ada, validator gagal, atau salah satu gerbang tidak terpenuhi,
+hasilnya **`false`**. Alasan lengkap tersedia di `GET /health` → `model_reliability.reasons`
+dan di `logs/holdout_v3_result.json`. Status saat ini: **belum dievaluasi pada v3 → false**.
+
+## 📎 Pin Revisi Hugging Face (B615)
+
+INDOBERT (jika diaktifkan melalui `INSTALL_ML=true` di Docker) dimuat dari folder lokal `models/indobert/`, **bukan** langsung dari Hugging Face Hub, sehingga tidak ada risiko model berubah secara diam-diam.
+
+Bila model diunduh dari Hugging Face Hub (misalnya `indobenchmark/indobert-base-p1`), harus menggunakan **revision yang di-pin** (commit hash / tag spesifik) melalui parameter `revision=` agar build deterministik dan tidak terpengaruh pembaruan model di Hub.

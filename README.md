@@ -23,11 +23,14 @@ A production-grade Machine Learning web application that classifies news article
 - **Leakage-free pipeline** — split first, TF-IDF fit on train only, SMOTETomek on train only.
 - **Shortcut removal** — strips "Reuters" agency markers (96.5% → ~0% leakage signal).
 - **Model selection by evidence** — 3-fold CV comparison of LinearSVC, Logistic Regression, Naive Bayes.
-- **Threshold tuning** — decision threshold 0.44 optimized on a validation split, not on test.
+- **Threshold tuning** — decision threshold 0.44 (English) / 0.31 (Indonesian)
+  optimized on a validation split, not on test.
 - **Explainable AI (XAI)** — 18,982 weighted n-gram features surfaced per prediction.
 - **REST API** — `/predict`, `/metrics`, `/feedback`, `/health`.
 - **Modern Web UI** — dark glassmorphism dashboard with probability bars, XAI pills, and feedback buttons.
-- **Human feedback loop** — corrections saved to `feedback.csv` and merged on retrain.
+- **Human feedback loop** — corrections saved to `feedback.csv` (status `"baru"`),
+  direview via `scripts/review_feedback.py`, lalu digabung pada retrain hanya
+  bila status `"disetujui"`.
 - **19 automated tests** — API edge cases, pipeline logic, feedback validation.
 - **Deployment ready** — Dockerfile, Procfile (Gunicorn), requirements split (runtime/dev).
 - **EDA notebook** — executed with leakage audit, word clouds, confusion matrix, ROC curve.
@@ -150,6 +153,105 @@ docker build -t fake-news-detector .
 docker run -p 5000:5000 fake-news-detector
 ```
 
+**Optional ML dependencies (debunk matching + IndoBERT).**  
+The default image installs only `requirements.txt` (Flask, scikit-learn, pandas, numpy, …), so the app starts fast but `similar_debunked` returns `[]` and IndoBERT is unavailable. To enable sentence-transformers / torch:
+
+```bash
+docker build --build-arg INSTALL_ML=true -t fake-news-detector-ml .
+docker run -p 5000:5000 fake-news-detector-ml
+```
+
+Unduhan tambahan sekitar 300–900 MB (torch CPU ~200 MB, sentence-transformers ~100 MB, model embeddings ~100 MB). App tetap berjalan tanpa dependencies berat: `debunk_available` akan `false` di `/predict`, dan UI menampilkan "Fitur pencocokan klaim tidak aktif di server ini".
+
+## 📦 Obtaining Model Artefacts (Official Path)
+
+Artefak model (`*.pkl`, `*.npy`, `hoax_index_meta.json`) **tidak disimpan di repositori** (dicantumkan di `.gitignore`) karena berukuran besar. Setelah clone bersih, model belum siap dan `/predict` menjawab **HTTP 503** (bukan 500 — ini kondisi "layanan belum siap", bukan error server):
+
+```json
+{
+  "error": "Model belum siap. Jalankan train_model.py (Inggris) atau train_model_id.py (Indonesia), lalu restart server. Lihat README.md bagian \"Cara menjalankan dari nol\".",
+  "models_missing": ["en", "id"],
+  "recovery": {"en": "python train_model.py", "id": "python train_model_id.py", "after": "Restart server, lalu cek GET /health."}
+}
+```
+
+`/health` tetap menampilkan `status: "healthy"` dengan `model_loaded: false`, `models_missing`, `model_recovery`, `model_reliability`, status `indobert.checksums_ok`, dan detail per-model — tidak crash dan tidak diam-diam salah bahasa. UI menampilkan pesan pemulihan dari server (bukan pesan generik "server bermasalah").
+
+### Jalur resmi: siapkan data → latih → verifikasi checksum
+
+```bash
+# 1. Siapkan data latih Indonesia (download + cleaning, ~beberapa MB)
+python scripts/prepare_dataset_id.py
+
+# 2. Latih model Indonesia (+ threshold tuning, evaluasi hold-out)
+python train_model_id.py --allow-sample
+
+#   Catatan: tanpa --allow-sample, pelatihan ditolak bila data/train_id.csv
+#   tidak tersedia dan hanya sample_news_id.csv tersedia (eksperimental,
+#   tidak andal produksi).
+
+# 3. (Opsional) Latih model Inggris (utama)
+python scripts/prepare_dataset.py
+python train_model.py
+
+# 4. Verifikasi integritas artefak dengan checksum
+cd models
+sha256sum -c CHECKSUMS.txt
+```
+
+Catatan: `prepare_dataset_id.py` kini memakai **GroupKFold by-source** sebagai default (tidak ada sumber yang muncul di train dan test sekaligus). Flag `--random-split` hanya untuk smoke test dan akan mencetak peringatan kebocoran sumber — jangan dipakai untuk metrik. Detail: `docs/DATA_SOURCES.md`.
+
+Setiap artefak yang ada di disk akan diverifikasi SHA-256 terhadap `models/CHECKSUMS.txt` saat aplikasi start. Artefak yang hash-nya tidak cocok akan dilewati (tidak dimuat), dan aplikasi tetap berjalan dengan artefak yang tersedia. Lewati seluruh verifikasi dengan `SKIP_CHECKSUM=1`.
+
+### Alternatif: rilis artefak (GitHub Release)
+
+Maintainer dapat mem-publish artefak model sebagai GitHub Release dengan berkas `models/CHECKSUMS.txt` (SHA-256). Pengguna mengunduh artefak ke `models/`, lalu menjalankan `sha256sum -c CHECKSUMS.txt` sebelum memulai aplikasi.
+
+---
+
+## 🔒 Keamanan & Privasi
+
+### Header keamanan (S06)
+
+Setiap respons HTTP disertai header:
+- **Content-Security-Policy** — membatasi sumber skrip, gaya, dan font. Inline
+  script hanya diizinkan melalui nonce/hash; Google Fonts (`fonts.googleapis.com`,
+  `fonts.gstatic.com`) diizinkan karena digunakan oleh UI.
+- **X-Content-Type-Options: nosniff** — mencegah MIME sniffing.
+- **X-Frame-Options: DENY** — mencegah clickjacking melalui iframe.
+- **Referrer-Policy: no-referrer** — tidak mengirim URL halaman ke situs luar.
+- **Permissions-Policy** — nonaktifkan geolocation, microphone, camera,
+  payment, usb, magnetometer.
+
+### SECRET_KEY & CORS (S07)
+
+- `SECRET_KEY` hanya diambil dari variabel lingkungan (`os.environ.get('SECRET_KEY')`),
+  tidak ada default yang dikodekan ke repositori. Gunakan untuk sesi/CSRF di
+  masa depan.
+- **CORS tidak diaktifkan secara default.** Tidak ada `flask-cors` terpasang
+  dan tidak ada header `Access-Control-Allow-Origin` yang disetel. Bila
+  diperlukan, tambahkan secara eksplisit di deployment.
+
+### Privasi masukan & retensi (PR01)
+
+Peringatan singkat ditampilkan di UI dekat kotak masukan:
+
+> "Jika Anda mengirim masukan, teks akan disimpan untuk perbaikan sistem.
+>  Jangan kirim data pribadi."
+
+Data yang disimpan:
+- Masukan feedback disimpan ke `data/feedback.csv` (git-ignored) dengan
+  status `"baru"`, kemudian direview dan dipindahkan ke
+  `data/feedback_reviewed.csv` hanya bila disetujui reviewer.
+- Tidak ada data pribadi (nama, email, alamat IP, dll.) yang sengaja
+  dikumpulkan. Alamat IP hanya digunakan untuk rate limiting (tidak
+  disimpan berkelanjutan).
+
+Cara menghapus data:
+- Hapus `data/feedback.csv` dan `data/feedback_reviewed.csv` untuk
+  membuang semua masukan pengguna.
+- Matikan fitur feedback sepenuhnya dengan `FEEDBACK_ENABLED=false`.
+
 ---
 
 ## 🔬 Methodology (Why the Numbers Are Trustworthy)
@@ -240,31 +342,51 @@ curl -X POST http://127.0.0.1:5000/feedback \
 | `/metrics` | GET | Evaluation metrics + methodology flags |
 | `/health` | GET | Health, threshold, pending feedback count |
 
-**Rate limiting** — `/predict`, `/feedback`, and `/metrics` allow 30 requests
-per minute per IP by default (`429` with a JSON error when exceeded). Override
-with `RATE_LIMIT_PER_MINUTE` (e.g. `10 per minute`) and set
-`RATE_LIMIT_STORAGE_URI` to a shared backend (e.g. Redis) for multi-worker
-deployments. `/` and `/health` are deliberately unlimited for UI and uptime
-checks.
+**Rate limiting** — `/predict`, `/feedback`, dan `/metrics` membatasi 30 request
+per menit per IP secara default (`429` dengan JSON error saat melebihi). Override
+dengan `RATE_LIMIT_PER_MINUTE` (mis. `10 per minute`). Untuk multi-worker,
+setel `RATE_LIMIT_STORAGE_URI` ke backend bersama (mis. Redis); `memory://`
+tidak sinkron antar worker dan akan mencetak peringatan saat start. Di balik
+proxy, gunakan `TRUSTED_PROXIES=N` (default 0 = abaikan header
+`X-Forwarded-For`, gunakan alamat koneksi langsung) bersama
+`werkzeug.middleware.proxy_fix.ProxyFix` agar IP klien teridentifikasi dengan
+benar. `/` dan `/health` sengaja tidak dibatasi untuk UI dan pemantauan uptime.
 
-`POST /feedback` only accepts labels `0`/`1` (numbers or strings); booleans and
-other values are rejected with `400`.
+`POST /feedback` hanya menerima label `0`/`1` (angka atau string); boolean dan
+nilai lainnya ditolak dengan `400`. Masukan baru disimpan ke
+`data/feedback.csv` dengan status `"baru"` dan kolom tambahan
+(`id`, `timestamp`, `text_hash`, `status`, `reviewer`). Hanya baris dengan
+status `"disetujui"` yang digunakan saat pelatihan ulang.
 
 ---
 
 ## 🔁 Continuous Improvement (Feedback Loop)
 
 ```
-Predict → Human verifies → feedback.csv → retrain → evaluate on holdout
+Predict → Human verifies → feedback.csv (status "baru") → review
+  → feedback_reviewed.csv (status "disetujui") → retrain → evaluate on holdout
 ```
 
-1. **Collect** — UI buttons (✅ Benar / ❌ Sebenarnya Real / ❌ Sebenarnya Fake) or bulk:
+1. **Collect** — tombol UI (✅ Benar / ❌ Sebenarnya Real / ❌ Sebenarnya Fake)
+   atau bulk import:
    ```bash
    python scripts/import_feedback.py data/koreksi.csv
    ```
-2. **Retrain** — `python train_model.py` (auto-merges feedback, deduplicated).
-3. **Measure honestly** — `python scripts/batch_test.py data/batch_holdout.csv`
-4. **Tune** — `python scripts/tune_model.py`
+   Setiap masukan baru disimpan ke `data/feedback.csv` dengan status `"baru"`.
+2. **Review** — tinjau baris "baru" satu per satu dan setujui/tolak:
+   ```bash
+   python scripts/review_feedback.py
+   ```
+   Hasilnya ditulis ke `data/feedback_reviewed.csv` dengan status `"disetujui"`
+   atau `"ditolak"`.
+3. **Retrain** — `python train_model.py` (auto-merges hanya baris
+   `"disetujui" dari `feedback_reviewed.csv`, deduplikasi).
+4. **Measure honestly** — `python scripts/batch_test.py data/batch_holdout.csv`
+5. **Tune** — `python scripts/tune_model.py`
+
+> Masukan dengan status `"baru"` **tidak** digunakan pelatihan. Hanya baris
+> yang telah direview dan disetujui baru masuk, sehingga pelabelan spam atau
+> salah tidak dapat meracuni model secara otomatis.
 
 > Always evaluate on samples the model has never seen. Re-testing on feedback rows only proves memorization.
 
@@ -342,7 +464,8 @@ The API returns the top influential unigrams/bigrams per prediction, rendered in
 
 - English-only vocabulary; Indonesian text requires a local dataset or IndoBERT.
 - TF-IDF + linear models capture lexical patterns, not deep semantics.
-- Dataset labels are inherited from the source; real-world drift requires periodic retraining.
+- Train/test split is randomized with label stratification, **not** by source;
+  real-world drift requires periodic retraining.
 - The model should assist — not replace — human fact-checking.
 
 ### Model Bahasa Indonesia — status keandalan (Saring Berita)
@@ -357,4 +480,22 @@ The API returns the top influential unigrams/bigrams per prediction, rendered in
 - Untuk teks Indonesia, sistem mencocokkan kalimat input dengan indeks judul klaim hoak yang sudah dibantah (turnbackhoax.id) melalui embedding multibahasa.
 - Hasil pencocokan **bukan bukti** bahwa teks adalah hoaks; kemiripan teks hanya indikasi. Buka tautan klarifikasi untuk verifikasi lengkap.
 - Ambang kemiripan (0,66) ditetapkan pada validasi hold-out v2 agar false match pada berita valid rendah (3,51%), dengan presisi pencocokan 86,67% dan recall hoak 28,26%.
+- **Catatan selection bias:** ambang 0,66 dipilih dan dievaluasi pada **hold-out v2 yang sama**, jadi metriknya terjangkau bias seleksi dan 95% Wilson CI-nya lebar. Ambang sengaja tidak diubah; rekalibrasi membutuhkan hold-out v3 independen (belum dilengkapi data).
 - Hanya judul + tautan sumber yang disimpan; tidak ada teks penuh artikel berhak cipta.
+
+### 🕷️ Review Skrip Scraping (tidak dijalankan)
+
+Skrip di `scripts/scraping/` tersedia sebagai referensi dan **tidak dijalankan** dalam build/CI. Hasil review:
+
+| Aspek | Status | Detail |
+|-------|--------|--------|
+| `robots.txt` / Aturan Layanan | ⚠️ Perlu dicek manual | Setiap skrip mencantumkan URL `robots.txt` situs target (TurnBackHoax.id, Detik, Kompas, Jawapos, Pikiran Rakyat, Harian Medan). Sebelum scrape, periksa apakah scraping diizinkan dan patuhi `crawl-delay`. |
+| Timeout | ✅ | Setiap `requests.get(...)` menggunakan `timeout=15` detik agar tidak terblokir secara diam-diam. |
+| User-Agent | ✅ | Setiap skrip mengirim User-Agent browser yang menjelaskan identitas klien. |
+| Dijalankan otomatis | ❌ Tidak | Tidak ada pemanggilan skrip scraping di `app.py`, `train_model*.py`, atau CI. Data latih berasal dari berkas yang sudah disiapkan (`scripts/prepare_dataset_id.py`), bukan scraping langsung. |
+
+### 📎 Pin Revisi Hugging Face (B615)
+
+INDOBERT (jika diaktifkan melalui `INSTALL_ML=true`) dimuat dari folder lokal `models/indobert/`, **bukan** langsung dari Hugging Face Hub, sehingga tidak ada risiko model berubah secara diam-diam.
+
+Bila suatu saat model diunduh dari Hugging Face Hub (misalnya `indobenchmark/indobert-base-p1` yang disebutkan di `models/model_card_id.md`), harus menggunakan **revision yang di-pin** (commit hash / tag spesifik) melalui parameter `revision=` agar build deterministik dan tidak terpengaruh pembaruan model di Hub.

@@ -1,0 +1,52 @@
+{
+  "embed_model": "paraphrase-multilingual-MiniLM-L12-v2",
+  "n_holdout": 103,
+  "n_valid": 57,
+  "n_hoax": 46,
+  "threshold_A_to_B": 0.65,
+  "eval_A_to_B": {
+    "threshold": 0.65,
+    "n_flagged": 9,
+    "false_match_valid": 2,
+    "fmr_valid": 0.06896551724137931,
+    "true_match_hoax": 7,
+    "recall_hoax": 0.30434782608695654,
+    "precision": 0.7777777777777778
+  },
+  "threshold_B_to_A": 0.68,
+  "eval_B_to_A": {
+    "threshold": 0.68,
+    "n_flagged": 6,
+    "false_match_valid": 0,
+    "fmr_valid": 0.0,
+    "true_match_hoax": 6,
+    "recall_hoax": 0.2608695652173913,
+    "precision": 1.0
+  },
+  "threshold_pooled": 0.66,
+  "eval_pooled": {
+    "threshold": 0.66,
+    "n_flagged": 15,
+    "false_match_valid": 2,
+    "fmr_valid": 0.03508771929824561,
+    "true_match_hoax": 13,
+    "recall_hoax": 0.2826086956521739,
+    "precision": 0.8666666666666667
+  },
+  "recall_cv_avg": 0.28260869565217395,
+  "fmr_cv_avg": 0.034482758620689655,
+  "wilson_ci_fmr_valid": [
+    0.0,
+    0.12064720365810762
+  ],
+  "wilson_ci_recall_hoak": [
+    0.1254844588924897,
+    0.4647039054375056
+  ],
+  "precision_at_prevalence": {
+    "0.10": 0.47661188369152974,
+    "0.30": 0.7783895388850655,
+    "0.50": 0.8912529550827423
+  },
+  "note": "Ambang 0,66 asli dipilih dievaluasi pada hold-out v2 yang sama (selection bias). Estimasi CV di atas lebih jujur."
+}

@@ -19,14 +19,29 @@ HEADERS = {
 # Delay untuk menghindari rate limiting
 DELAY = 1  # detik
 
+# Timeout untuk setiap permintaan HTTP (mencegah terblokir secara diam-diam)
+REQUEST_TIMEOUT = 15  # detik
+
+# Catatan etika scraping (tidak dijalankan dalam CI / versi ini):
+# - Sebelum scraping, periksa robots.txt situs target dan Aturan Layanan (ToS).
+#   Detik: https://www.detik.com/robots.txt
+#   Kompas: https://www.kompas.com/robots.txt
+# - Hanya scrape jika diizinkan; patuhi crawl-delay dan batas rate.
+# - Jangan scrape data pribadi / terkunci di balik login.
+# - Skrip ini tersedia sebagai referensi saja; tidak dijalankan otomatis.
+
 
 def scrape_detik(max_articles=50):
-    """Scrape berita dari Detik.com."""
+    """Scrape berita dari Detik.com.
+
+    Peringatan: pastikan robots.txt dan Aturan Layanan Detik.com
+    mengizinkan scraping sebelum menjalankan skrip ini.
+    """
     url = "https://www.detik.com/"
     articles = []
     
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         
@@ -40,7 +55,7 @@ def scrape_detik(max_articles=50):
         # Scrape setiap artikel
         for link in article_links[:max_articles]:
             try:
-                article_response = requests.get(link, headers=HEADERS)
+                article_response = requests.get(link, headers=HEADERS, timeout=REQUEST_TIMEOUT)
                 article_response.raise_for_status()
                 article_soup = BeautifulSoup(article_response.text, "html.parser")
                 
@@ -86,7 +101,7 @@ def scrape_kompas(max_articles=50):
     articles = []
     
     try:
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         soup = BeautifulSoup(response.text, "html.parser")
         
@@ -100,7 +115,7 @@ def scrape_kompas(max_articles=50):
         # Scrape setiap artikel
         for link in article_links[:max_articles]:
             try:
-                article_response = requests.get(link, headers=HEADERS)
+                article_response = requests.get(link, headers=HEADERS, timeout=REQUEST_TIMEOUT)
                 article_response.raise_for_status()
                 article_soup = BeautifulSoup(article_response.text, "html.parser")
                 

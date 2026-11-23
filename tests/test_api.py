@@ -112,8 +112,9 @@ def test_feedback_saved(client, tmp_path, monkeypatch):
     assert feedback_file.exists()
 
     content = feedback_file.read_text(encoding='utf-8')
-    assert content.startswith('text,label')
+    assert content.startswith('id,timestamp,text_hash,text,label,status,reviewer')
     assert 'perfectly valid news text' in content
+    assert 'baru' in content  # status awal semua feedback baru
 
 
 def test_feedback_invalid_label(client, tmp_path, monkeypatch):
@@ -310,3 +311,51 @@ def test_predict_includes_similar_debunked_field(client):
     # Field lama tetap ada (tidak dihapus).
     for field in ('prediction', 'probability_fake', 'model_reliable', 'red_flags', 'status'):
         assert field in data, f'field hilang: {field}'
+
+
+def test_predict_includes_debunk_available_field(client):
+    response = client.post('/predict', json={
+        'text': 'Halo, apa kabar hari ini?'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert 'debunk_available' in data
+    assert isinstance(data['debunk_available'], bool)
+
+
+def test_debunk_available_false_when_library_missing(client, monkeypatch):
+    import app as app_module
+
+    monkeypatch.setattr(app_module, 'DEBUNK_AVAILABLE', False)
+
+    def boom(*args, **kwargs):
+        raise ImportError('No module named sentence_transformers')
+
+    monkeypatch.setattr(app_module, '_embed_texts', boom)
+    response = client.post('/predict', json={
+        'text': 'Halo, apa kabar hari ini?'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['debunk_available'] is False
+    assert data['similar_debunked'] == []
+
+
+def test_predict_short_text_under_five_words(client):
+    # E: teks < 5 kata -> jangan jalankan model, status teks_terlalu_pendek,
+    # probability null, field lama tetap ada.
+    response = client.post('/predict', json={
+        'text': 'halo selamat pagi semua'
+    })
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['status'] == 'teks_terlalu_pendek'
+    assert data['prediction'] == 'Tidak dapat dianalisis'
+    assert data['label_code'] is None
+    assert data['confidence'] is None
+    assert data['probability_real'] is None
+    assert data['probability_fake'] is None
+    # Field lama tetap ada (tidak dihapus, boleh null).
+    for field in ('prediction', 'probability_fake', 'model_reliable', 'red_flags', 'status', 'debunk_available'):
+        assert field in data, f'field hilang: {field}'
+    assert data['advice'] == 'Teks terlalu pendek untuk dianalisis. Tempelkan paragraf atau berita yang lebih lengkap.'
