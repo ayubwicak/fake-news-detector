@@ -6,4 +6,7 @@ pandas>=2.0.0
 numpy>=1.24.0
 imbalanced-learn>=0.12.0
 joblib>=1.3.0
+# Dipertahankan: dipakai sebagai daftar stopword pada training model Indonesia
+# (id_preprocessing.py:23-41 -> train_model_id.py:151). Menghapusnya akan mengubah
+# vocabulary model hasil training ulang. clean_text() sendiri TIDAK memakai stemming.
 Sastrawi==1.0.1
