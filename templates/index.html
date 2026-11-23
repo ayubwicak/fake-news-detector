@@ -29,6 +29,17 @@
             --hoax-fg: #c2410c;
             --border-muted: #c9d9d0;
             --dot-green: #1faa59;
+            /* Skala spasi 4/8/12/16/24px (dipakai area input) */
+            --space-1: 4px;
+            --space-2: 8px;
+            --space-3: 12px;
+            --space-4: 16px;
+            --space-6: 24px;
+            /* State disabled yang masih terbaca (kontras >= 4.5:1) */
+            --disabled-bg: #5b6f66;
+            --disabled-fg: #ffffff;
+            --focus-ring: rgba(11, 122, 85, 0.30);
+            --notice-bg: #f5f8f6;
         }
 
         * {
@@ -305,77 +316,123 @@
             font-weight: 600;
         }
 
+        /* Privasi: kotak netral lembut, tidak bersaing dengan CTA */
         .privacy-notice {
             display: flex;
             align-items: flex-start;
-            gap: 0.5rem;
-            font-size: 0.68rem;
+            gap: var(--space-2);
+            margin-top: var(--space-4);
+            padding: var(--space-3);
+            background: var(--notice-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            font-size: 0.8125rem; /* 13px */
             color: var(--text-secondary);
-            margin-top: 0.625rem;
-            padding: 0.5rem 0.75rem;
-            background: rgba(128, 128, 128, 0.08);
-            border-radius: 6px;
-            line-height: 1.4;
+            line-height: 1.45;
         }
 
         .privacy-icon {
             flex-shrink: 0;
-            color: var(--accent, #2e7d32);
+            width: 16px;
+            height: 16px;
+            margin-top: 2px;
+            color: var(--green-main);
         }
 
+        /* Footer aksi: teks ghost di kiri, CTA solid di kanan */
         .actions {
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            gap: 0.75rem;
-            margin-top: 0.875rem;
+            gap: var(--space-3);
+            margin-top: var(--space-4);
         }
 
         .btn-ghost {
             display: inline-flex;
             align-items: center;
-            gap: 0.375rem;
+            gap: var(--space-2);
+            min-height: 36px;
+            padding: var(--space-2);
             background: none;
-            border: none;
-            padding: 0.25rem 0;
-            font-size: 0.78rem;
-            font-weight: 500;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            font-size: 0.875rem; /* 14px */
+            font-weight: 600;
             color: var(--text-secondary);
+            cursor: pointer;
         }
 
         .btn-ghost svg {
-            width: 0.75rem;
-            height: 0.75rem;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
         }
 
-        .btn-ghost:hover { color: var(--text-primary); }
+        .btn-ghost:hover {
+            color: var(--text-primary);
+            background: var(--green-light);
+            border-color: var(--card-border);
+        }
+
+        .btn-ghost:focus-visible,
+        .chip:focus-visible,
+        .tips summary:focus-visible {
+            outline: 3px solid var(--focus-ring);
+            outline-offset: 2px;
+        }
 
         .btn-primary {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            gap: 0.5rem;
+            gap: var(--space-2);
+            min-height: 46px;
+            padding: var(--space-3) var(--space-6);
             background: var(--green-main);
             color: #ffffff;
-            border: none;
-            border-radius: 0.375rem;
-            padding: 0.6875rem 1.375rem;
-            font-size: 0.78rem;
+            border: 1px solid transparent;
+            border-radius: 8px;
+            font-size: 1rem; /* 16px */
             font-weight: 600;
-            transition: background 0.15s ease;
+            line-height: 1.2;
+            cursor: pointer;
+            transition: background 0.15s ease, box-shadow 0.15s ease;
         }
 
         .btn-primary svg {
-            width: 0.875rem;
-            height: 0.875rem;
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
         }
 
         .btn-primary:hover:not(:disabled) { background: var(--green-hover); }
 
+        .btn-primary:focus-visible {
+            outline: 3px solid var(--focus-ring);
+            outline-offset: 2px;
+            box-shadow: 0 0 0 1px var(--green-hover);
+        }
+
         .btn-primary:disabled {
-            background: var(--muted-inactive);
+            background: var(--disabled-bg);
+            border-color: var(--disabled-bg);
+            color: var(--disabled-fg);
+            opacity: 1;
             cursor: not-allowed;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
         }
 
         /* ---------- Kartu kanan ---------- */
@@ -729,6 +786,138 @@
             background: var(--hoax-bg);
         }
 
+        /* ---------- Alat bantu input (UX) ---------- */
+        .input-tools {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: var(--space-2);
+            margin-top: var(--space-4);
+        }
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: var(--space-2);
+            min-height: 36px;
+            max-width: 100%;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--border-muted);
+            border-radius: 8px;
+            background: var(--card);
+            color: var(--green-hover);
+            font-size: 0.875rem; /* 14px */
+            font-weight: 600;
+            line-height: 1.2;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: background 0.15s ease, border-color 0.15s ease;
+        }
+        .chip svg { width: 16px; height: 16px; flex-shrink: 0; }
+        .chip:hover { border-color: var(--green-main); background: var(--green-light); }
+        .chip:active { background: var(--green-light); }
+        .hint-line {
+            display: block;
+            margin-top: var(--space-2);
+            font-size: 0.8125rem; /* 13px */
+            color: var(--text-secondary);
+            text-align: left;
+        }
+        .tool-note {
+            flex: 1 1 100%;
+            margin: 0;
+            font-size: 0.8125rem; /* 13px */
+            color: var(--cream-text);
+        }
+        .tips {
+            margin-top: var(--space-4);
+            font-size: 0.8125rem; /* 13px */
+            color: var(--text-secondary);
+        }
+        .tips summary {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: var(--space-2);
+            min-height: 44px;
+            padding: var(--space-2) var(--space-3);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            background: var(--card);
+            list-style: none;
+            cursor: pointer;
+            color: var(--green-hover);
+            font-weight: 600;
+        }
+        .tips summary::-webkit-details-marker { display: none; }
+        .tips summary:hover { border-color: var(--green-main); }
+        .tips-arrow {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+            transition: transform 0.2s ease;
+        }
+        .tips[open] .tips-arrow { transform: rotate(180deg); }
+        .tips ul {
+            margin: var(--space-2) 0 0;
+            padding: var(--space-2) var(--space-2) var(--space-2) var(--space-6);
+            line-height: 1.5;
+        }
+
+        /* ---------- Status pemuatan & aksi hasil ---------- */
+        .skeleton-line {
+            height: 0.625rem;
+            border-radius: 0.25rem;
+            background: linear-gradient(90deg, #eef3f0 25%, #e2ece6 50%, #eef3f0 75%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.2s linear infinite;
+            margin-bottom: 0.5rem;
+        }
+        .skeleton-line.short { width: 55%; }
+        .skeleton-line.medium { width: 78%; }
+        @keyframes skeleton-shimmer {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .loading-caption {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            margin-top: 0.75rem;
+        }
+        .result-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.875rem;
+        }
+        .btn-secondary {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            border: 1px solid var(--card-border);
+            border-radius: 0.375rem;
+            background: #ffffff;
+            color: var(--green-hover);
+            font-size: 0.72rem;
+            font-weight: 600;
+            padding: 0.4375rem 0.75rem;
+        }
+        .btn-secondary:hover { border-color: var(--green-main); background: var(--green-light); }
+        .btn-secondary svg { width: 0.75rem; height: 0.75rem; }
+        .status-legend {
+            margin-top: 0.625rem;
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+        .status-legend summary { cursor: pointer; color: var(--green-main); font-weight: 600; }
+        .status-legend dl { margin: 0.375rem 0 0; display: grid; gap: 0.25rem; }
+        .status-legend dt { font-weight: 600; color: var(--text-primary); }
+        .status-legend dd { margin: 0; padding-left: 0.75rem; }
+        .copy-status {
+            font-size: 0.68rem;
+            color: var(--green-hover);
+            align-self: center;
+        }
+
         /* ---------- Langkah bawah ---------- */
         .steps {
             margin-top: 1.625rem;
@@ -765,9 +954,14 @@
                 max-width: none;
             }
 
-            .actions .btn-primary {
-                flex: 1 1 100%;
+            /* Mobile: CTA full-width di atas, "Hapus teks" di bawahnya */
+            .actions {
+                flex-direction: column-reverse;
+                align-items: stretch;
+                gap: var(--space-3);
             }
+            .actions .btn-primary { width: 100%; }
+            .actions .btn-ghost { align-self: flex-start; }
 
             .header-inner {
                 justify-content: flex-start;
@@ -814,6 +1008,14 @@
             </div>
         </header>
 
+        <p id="system-mode" class="system-mode" data-mode="{{ 'reliable' if model_reliable else 'experimental' }}">
+            {% if model_reliable %}
+            Mode tervalidasi: hold-out v3 memenuhi semua gerbang keandalan. Tetap verifikasi ke sumber tepercaya.
+            {% else %}
+            Mode eksperimental: indikasi awal, bukan jaminan. Hasil belum memenuhi gerbang keandalan hold-out v3.
+            {% endif %}
+        </p>
+
         <!-- Hero -->
         <section class="hero" aria-labelledby="hero-title">
             <span class="pill">
@@ -853,10 +1055,53 @@
 
                 <div class="char-count" id="char-count">0 karakter</div>
 
+                <div class="input-tools" aria-label="Alat bantu input">
+                    <button type="button" class="chip" id="btn-sample-news" aria-label="Muat contoh berita">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/>
+                        </svg>
+                        Muat contoh berita
+                    </button>
+                    <button type="button" class="chip" id="btn-sample-chain" aria-label="Muat contoh pesan berantai">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M4 12h13M13 7l5 5-5 5"/>
+                        </svg>
+                        Muat contoh pesan
+                    </button>
+                    <button type="button" class="chip" id="btn-paste" aria-label="Tempel teks dari clipboard">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <rect x="8" y="3" width="8" height="4" rx="1"/><path d="M9 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3"/>
+                        </svg>
+                        Tempel dari clipboard
+                    </button>
+                    <span class="tool-note" id="tool-note" role="status" aria-live="polite"></span>
+                </div>
+
+                <span class="hint-line" id="input-hint">Min. 10 karakter · Ctrl+Enter untuk memeriksa</span>
+
                 <div class="privacy-notice">
-                    <span class="privacy-icon" aria-hidden="true">ℹ</span>
+                    <svg class="privacy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="9"/><path d="M12 11v5"/><path d="M12 8h.01"/>
+                    </svg>
                     <span class="privacy-text">Jika Anda mengirim masukan, teks akan disimpan untuk perbaikan sistem. Jangan kirim data pribadi.</span>
                 </div>
+
+                <details class="tips">
+                    <summary aria-expanded="false">
+                        <span>Tips agar hasil lebih akurat</span>
+                        <svg class="tips-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="m6 9 6 6 6-6"/>
+                        </svg>
+                    </summary>
+                    <ul>
+                        <li>Tempel satu berita atau pernyataan penuh, bukan hanya judul.</li>
+                        <li>Sertakan kalimat lengkap (minimal 10 karakter) agar pola bahasa terbaca.</li>
+                        <li>Jangan campur beberapa berita berbeda dalam satu kotak.</li>
+                        <li>Hasil adalah indikasi awal — tetap cek ke sumber tepercaya.</li>
+                    </ul>
+                </details>
+
+                <span id="btn-check-help" class="sr-only">Masukkan minimal 10 karakter</span>
 
                 <div class="actions">
                     <button type="button" class="btn-ghost" id="btn-hapus">
@@ -866,7 +1111,7 @@
                         Hapus teks
                     </button>
 
-                    <button type="button" class="btn-primary" id="btn-check" disabled>
+                    <button type="button" class="btn-primary" id="btn-check" disabled aria-describedby="btn-check-help" title="Masukkan minimal 10 karakter">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" width="14" height="14" aria-hidden="true">
                             <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
                             <path d="M14 3v5h5"/>
@@ -950,14 +1195,6 @@
 
     </div>
 
-    <p id="system-mode" class="system-mode" data-mode="{{ 'reliable' if model_reliable else 'experimental' }}">
-        {% if model_reliable %}
-        Mode tervalidasi: hold-out v3 memenuhi semua gerbang keandalan. Tetap verifikasi ke sumber tepercaya.
-        {% else %}
-        Mode eksperimental: indikasi awal, bukan jaminan. Hasil belum memenuhi gerbang keandalan hold-out v3.
-        {% endif %}
-    </p>
-
     <p class="system-detect" style="display:none;">Fake News Detection System</p>
 
     <script>
@@ -977,6 +1214,15 @@
         const emptyState = document.getElementById('empty-state');
         const resultContent = document.getElementById('result-content');
         const feedbackBtns = document.getElementById('feedback-btns');
+        const btnSampleNews = document.getElementById('btn-sample-news');
+        const btnSampleChain = document.getElementById('btn-sample-chain');
+        const btnPaste = document.getElementById('btn-paste');
+        const toolNote = document.getElementById('tool-note');
+        const inputHint = document.getElementById('input-hint');
+
+        // Contoh netral (bukan klaim nyata) supaya pengguna bisa langsung mencoba.
+        const SAMPLE_NEWS = 'Pemerintah kota mengumumkan bahwa pembangunan taman publik di tengah kota akan dimulai bulan depan. Program ini bertujuan menambah ruang hijau bagi warga.';
+        const SAMPLE_CHAIN = 'Tersebar pesan yang mengatakan semua warga harus segera membeli obat tertentu karena penyakit telah mewabah. Informasi ini belum dikonfirmasi oleh lembaga kesehatan resmi.';
 
         let lastAnalyzed = null;
 
@@ -989,7 +1235,53 @@
             const tooShort = length < MIN_CHAR;
             charCount.classList.toggle('limit-exceeded', overLimit);
             btnCheck.disabled = tooShort || overLimit;
+            inputHint.textContent = tooShort
+                ? 'Min. ' + MIN_CHAR + ' karakter · Ctrl+Enter untuk memeriksa'
+                : 'Ctrl+Enter untuk memeriksa';
+            autoResize();
         }
+
+        // Textarea ikut tumbuh sampai batas wajar agar teks panjang tetap terlihat.
+        function autoResize() {
+            textarea.style.height = 'auto';
+            textarea.style.height = Math.min(Math.max(textarea.scrollHeight, 160), 340) + 'px';
+        }
+
+        function loadSample(text, label) {
+            textarea.value = text;
+            updateCharCount();
+            resetResult();
+            lastAnalyzed = null;
+            toolNote.textContent = label + ' dimuat. Anda bisa mengubahnya sebelum memeriksa.';
+            textarea.focus();
+        }
+
+        btnSampleNews.addEventListener('click', function () { loadSample(SAMPLE_NEWS, 'Contoh berita'); });
+        btnSampleChain.addEventListener('click', function () { loadSample(SAMPLE_CHAIN, 'Contoh pesan berantai'); });
+
+        btnPaste.addEventListener('click', async function () {
+            toolNote.textContent = '';
+            if (!navigator.clipboard || !navigator.clipboard.readText) {
+                toolNote.textContent = 'Browser tidak mengizinkan akses clipboard. Tempel manual dengan Ctrl+V.';
+                textarea.focus();
+                return;
+            }
+            try {
+                const text = await navigator.clipboard.readText();
+                if (!text || !text.trim()) {
+                    toolNote.textContent = 'Clipboard kosong.';
+                    return;
+                }
+                textarea.value = text.slice(0, parseInt(textarea.dataset.maxChar || '20000', 10));
+                updateCharCount();
+                resetResult();
+                lastAnalyzed = null;
+                toolNote.textContent = 'Teks berhasil ditempel dari clipboard.';
+            } catch (error) {
+                toolNote.textContent = 'Izin clipboard ditolak. Tempel manual dengan Ctrl+V.';
+                textarea.focus();
+            }
+        });
 
         // --- Reset tampilan hasil ---
         function resetResult() {
@@ -1008,6 +1300,8 @@
             updateCharCount();
             resetResult();
             lastAnalyzed = null;
+            toolNote.textContent = '';
+            textarea.focus();
         }
 
         btnHapus.addEventListener('click', clearText);
@@ -1039,6 +1333,26 @@
             return fallback || 'Pemeriksaan gagal. Coba lagi.';
         }
 
+        // --- Tampilan saat menunggu hasil ---
+        function showLoading() {
+            resetResult();
+            emptyState.style.display = 'none';
+            resultBox.classList.add('is-solid');
+            resultContent.classList.add('is-visible');
+            resultContent.innerHTML = '';
+            resultBox.setAttribute('aria-busy', 'true');
+            ['medium', 'short', 'medium'].forEach(function (cls) {
+                resultContent.appendChild(makeEl('div', 'skeleton-line ' + cls));
+            });
+            resultContent.appendChild(makeEl('p', 'loading-caption', 'Sedang memeriksa teks. Mohon tunggu...'));
+        }
+
+        function scrollToResult() {
+            if (window.innerWidth > 52 * 16) return; // hanya perlu di layar sempit
+            const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+            resultBox.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
+        }
+
         // --- Kirim prediksi ---
         async function submitPrediction() {
             const text = textarea.value.trim();
@@ -1046,6 +1360,8 @@
 
             btnCheck.disabled = true;
             btnLabel.textContent = 'Memeriksa...';
+            toolNote.textContent = '';
+            showLoading();
 
             try {
                 const response = await fetch('/predict', {
@@ -1061,10 +1377,12 @@
                 }
 
                 renderResult(data, text);
+                scrollToResult();
             } catch (error) {
                 showError('Tidak dapat terhubung ke server. Coba lagi.');
             } finally {
                 btnLabel.textContent = 'Periksa berita';
+                resultBox.removeAttribute('aria-busy');
                 updateCharCount();
             }
         }
@@ -1155,8 +1473,39 @@
                 resultContent.appendChild(expNotice);
             }
 
-            // TAHAP B: Pencocokan dengan klaim yang sudah dibantah (bagian utama
-            // saat model belum teruji, bersama ciri berbasis aturan).
+            // 1. Lencana status + ringkasan ditampilkan PALING ATAS, sebelum detail.
+            //    (Sebelumnya status ini terdorong ke bawah oleh bagian pencocokan klaim.)
+            resultContent.appendChild(makeEl('span', 'badge ' + meta.badgeClass, meta.label));
+            if (advice.ringkasan) {
+                resultContent.appendChild(makeEl('p', 'status-summary', advice.ringkasan));
+            }
+
+            const copyRow = makeEl('div', 'result-actions');
+            const copyBtn = makeEl('button', 'btn-secondary', 'Salin ringkasan');
+            copyBtn.type = 'button';
+            copyBtn.addEventListener('click', function () { copySummary(data, meta, advice); });
+            copyRow.appendChild(copyBtn);
+            const copyStatus = makeEl('span', 'copy-status');
+            copyStatus.id = 'copy-status';
+            copyStatus.setAttribute('role', 'status');
+            copyRow.appendChild(copyStatus);
+            resultContent.appendChild(copyRow);
+
+            const legend = makeEl('details', 'status-legend');
+            legend.appendChild(makeEl('summary', '', 'Apa arti status ini?'));
+            const legendList = makeEl('dl');
+            [
+                ['Cenderung valid', 'Model memperkirakan informasi valid (kemungkinan hoaks rendah).'],
+                ['Cenderung hoaks', 'Model memperkirakan informasi hoaks (kemungkinan hoaks tinggi).'],
+                ['Belum dapat disimpulkan', 'Hasil berada di area abu-abu — perlu pengecekan manual.']
+            ].forEach(function (pair) {
+                legendList.appendChild(makeEl('dt', '', pair[0]));
+                legendList.appendChild(makeEl('dd', '', pair[1]));
+            });
+            legend.appendChild(legendList);
+            resultContent.appendChild(legend);
+
+            // TAHAP B: Pencocokan dengan klaim yang sudah dibantah (detail lanjutan).
             const debunked = Array.isArray(data.similar_debunked) ? data.similar_debunked : [];
             const debunkAvailable = data.debunk_available === true;
             const debunkSection = makeEl('section', 'result-section debunked-section');
@@ -1209,12 +1558,6 @@
                 debunkSection.appendChild(makeEl('p', 'debunk-none', 'Tidak ditemukan kecocokan dengan klaim yang pernah dibantah di basis data kami. Ini bukan bukti bahwa informasi tersebut benar.'));
             }
             resultContent.appendChild(debunkSection);
-
-            // 1. Lencana status + ringkasan (tanpa angka besar tunggal)
-            resultContent.appendChild(makeEl('span', 'badge ' + meta.badgeClass, meta.label));
-            if (advice.ringkasan) {
-                resultContent.appendChild(makeEl('p', 'status-summary', advice.ringkasan));
-            }
 
             // 2. Ciri yang perlu diwaspadai (hanya jika ada)
             const flags = Array.isArray(data.red_flags)
@@ -1328,6 +1671,46 @@
             lastAnalyzed = { text: text, labelCode: data.label_code };
         }
 
+        // --- Salin ringkasan ke clipboard (dengan fallback non-secure context) ---
+        async function copySummary(data, meta, advice) {
+            const lines = [
+                'Saring Berita — ' + meta.label,
+                advice.ringkasan || '',
+                advice.saran ? 'Saran: ' + advice.saran : '',
+                'Probabilitas hoaks: ' + (Number(data.probability_fake) || 0).toFixed(1) + '%',
+                'Catatan: indikasi awal, bukan pemeriksaan fakta. Cek sumber tepercaya.'
+            ];
+            const text = lines.filter(Boolean).join('\n');
+            let copied = false;
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    copied = true;
+                } catch (error) {
+                    copied = false;
+                }
+            }
+            if (!copied) {
+                const temp = document.createElement('textarea');
+                temp.value = text;
+                temp.setAttribute('readonly', '');
+                temp.style.position = 'fixed';
+                temp.style.opacity = '0';
+                document.body.appendChild(temp);
+                temp.select();
+                try {
+                    copied = document.execCommand('copy');
+                } catch (error) {
+                    copied = false;
+                }
+                document.body.removeChild(temp);
+            }
+            const status = document.getElementById('copy-status');
+            if (status) {
+                status.textContent = copied ? 'Ringkasan tersalin.' : 'Gagal menyalin. Pilih teks secara manual.';
+            }
+        }
+
         // --- Kirim masukan ---
         async function sendFeedback(label) {
             if (!lastAnalyzed || !lastAnalyzed.text) return;
@@ -1378,6 +1761,14 @@
             const msg = makeEl('div', 'error-message', message);
             msg.setAttribute('role', 'alert');
             resultContent.appendChild(msg);
+
+            const retry = makeEl('button', 'btn-secondary', 'Coba lagi');
+            retry.type = 'button';
+            retry.addEventListener('click', submitPrediction);
+            const row = makeEl('div', 'result-actions');
+            row.appendChild(retry);
+            resultContent.appendChild(row);
+            scrollToResult();
         }
 
         btnCheck.addEventListener('click', submitPrediction);
@@ -1388,6 +1779,17 @@
                 submitPrediction();
             }
         });
+
+        // Jaga aria-expanded accordion tetap sinkron dengan state native <details>.
+        const tipsAccordion = document.querySelector('.tips');
+        if (tipsAccordion) {
+            const tipsSummary = tipsAccordion.querySelector('summary');
+            const syncTipsExpanded = function () {
+                tipsSummary.setAttribute('aria-expanded', tipsAccordion.open ? 'true' : 'false');
+            };
+            tipsAccordion.addEventListener('toggle', syncTipsExpanded);
+            syncTipsExpanded();
+        }
 
         updateCharCount();
     </script>
