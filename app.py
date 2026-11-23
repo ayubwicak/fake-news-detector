@@ -501,6 +501,63 @@ vec_id_path = os.path.join(ID_MODELS_DIR, 'vectorizer.pkl')
 weights_id_path = os.path.join(ID_MODELS_DIR, 'feature_weights.json')
 threshold_id_path = os.path.join(ID_MODELS_DIR, 'threshold.json')
 
+# ---------------------------------------------------------------------------
+# Integritas artefak model (checksum SHA-256).
+# models/CHECKSUMS.txt berisi <sha256>  <rel_path> untuk setiap artefak.
+# Saat startup, berkas yang ada di disk tetapi hash-nya tidak cocok akan
+# ditandai rusak dan tidak dimuat. Lewati seluruh verifikasi dengan
+# SKIP_CHECKSUM=1 (contoh: artefak belum tersedia saat fresh clone).
+# ---------------------------------------------------------------------------
+CHECKSUMS_PATH = os.path.join(MODELS_DIR, 'CHECKSUMS.txt')
+SKIP_CHECKSUM = os.environ.get('SKIP_CHECKSUM', '').lower() in ('1', 'true', 'yes', 'on')
+
+
+def _load_checksums(path=CHECKSUMS_PATH):
+    """Baca CHECKSUMS.txt -> dict {rel_path_normalized: expected_sha256}."""
+    expected = {}
+    if not os.path.exists(path):
+        return expected
+    try:
+        with open(path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    continue
+                digest, rel = parts[0].lower(), parts[1].strip()
+                # Normalisasi './' dan pemisah direktori.
+                rel = rel.replace('./', '').replace('\\', '/')
+                expected[rel] = digest
+    except Exception as e:
+        print(f"Warning: Could not read checksums file {path}: {e}")
+    return expected
+
+
+def _corrupt_artifact_paths(expected):
+    """Kembalikan set rel_path yang ada di disk tetapi hash-nya tidak cocok."""
+    corrupt = set()
+    if SKIP_CHECKSUM or not expected:
+        return corrupt
+    for rel, digest in expected.items():
+        full = os.path.join(MODELS_DIR, rel)
+        if not os.path.exists(full):
+            # Artefak git-ignored / belum tersedia: tidak dianggap rusak.
+            continue
+        try:
+            actual = hashlib.sha256(open(full, 'rb').read()).hexdigest()
+        except Exception:
+            actual = ''
+        if actual != digest:
+            corrupt.add(rel)
+            print(
+                f"Checksum MISMATCH for model artefact '{rel}': "
+                f"expected {digest}, got {actual}. Artefak tidak akan dimuat."
+            )
+    return corrupt
+
+
 eval_path = os.path.join(LOGS_DIR, 'evaluation.json')
 
 model_en = None
@@ -522,6 +579,32 @@ def _load_json(path, default):
         return default
 
 
+# Muat ekspektasi checksum dan hitung artefak yang rusak (ada di disk namun
+# hash tidak cocok) SEBELUM artefak dimuat, sehingga blok pemuatan di bawah
+# dapat melewati artefak korup.
+_checksums_expected = _load_checksums()
+
+
+def _rel_models_path(abs_path):
+    """Relasi path terhadap MODELS_DIR, serasi dengan entri CHECKSUMS.txt."""
+    try:
+        rel = os.path.relpath(abs_path, MODELS_DIR).replace('\\', '/')
+    except ValueError:
+        rel = abs_path
+    return rel
+
+
+_corrupt_paths = _corrupt_artifact_paths(_checksums_expected)
+if _corrupt_paths:
+    print(f"Artefak model dilewatkan karena checksum tidak cocok: "
+          f"{sorted(_corrupt_paths)}")
+
+
+def _artifact_is_usable(abs_path):
+    """False bila artefak ada di disk tetapi tercantum sebagai rusak."""
+    return _rel_models_path(abs_path) not in _corrupt_paths
+
+
 try:
     if os.path.exists(threshold_en_path):
         DECISION_THRESHOLD_EN = float(
@@ -539,22 +622,26 @@ except Exception as e:
     print(f"Warning: Could not load Indonesian threshold: {e}")
 
 try:
-    if os.path.exists(model_en_path) and os.path.exists(vec_en_path):
+    if (os.path.exists(model_en_path) and os.path.exists(vec_en_path)
+            and _artifact_is_usable(model_en_path)
+            and _artifact_is_usable(vec_en_path)):
         model_en = joblib.load(model_en_path)
         tfidf_en = joblib.load(vec_en_path)
         print("English model and vectorizer loaded successfully.")
-    if os.path.exists(weights_en_path):
+    if os.path.exists(weights_en_path) and _artifact_is_usable(weights_en_path):
         feature_weights_en = _load_json(weights_en_path, {})
         print(f"Loaded {len(feature_weights_en)} English feature weights for XAI.")
 except Exception as e:
     print(f"Error loading English model artifacts: {e}")
 
 try:
-    if os.path.exists(model_id_path) and os.path.exists(vec_id_path):
+    if (os.path.exists(model_id_path) and os.path.exists(vec_id_path)
+            and _artifact_is_usable(model_id_path)
+            and _artifact_is_usable(vec_id_path)):
         model_id = joblib.load(model_id_path)
         tfidf_id = joblib.load(vec_id_path)
         print("Indonesian model and vectorizer loaded successfully.")
-    if os.path.exists(weights_id_path):
+    if os.path.exists(weights_id_path) and _artifact_is_usable(weights_id_path):
         feature_weights_id = _load_json(weights_id_path, {})
         print(f"Loaded {len(feature_weights_id)} Indonesian feature weights for XAI.")
 except Exception as e:
