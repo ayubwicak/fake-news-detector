@@ -577,7 +577,8 @@ def _corrupt_artifact_paths(expected):
             # Artefak git-ignored / belum tersedia: tidak dianggap rusak.
             continue
         try:
-            actual = hashlib.sha256(open(full, 'rb').read()).hexdigest()
+            with open(full, 'rb') as fh:
+                actual = hashlib.sha256(fh.read()).hexdigest()
         except Exception:
             actual = ''
         if actual != digest:
