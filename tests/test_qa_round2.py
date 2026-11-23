@@ -172,6 +172,29 @@ def test_rate_limit_uses_configured_value():
     assert 'minute' in app.config['RATE_LIMIT']
 
 
+# --- Item 1: debug / production server ----------------------------------------
+
+def test_app_not_debug_by_default(monkeypatch):
+    """Aplikasi tidak berjalan dalam mode debug bila FLASK_DEBUG tidak diset."""
+    monkeypatch.delenv('FLASK_DEBUG', raising=False)
+    debug = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes', 'on')
+    assert debug is False
+    assert app.debug is False
+
+
+@pytest.mark.parametrize('value', ['1', 'true', 'yes', 'on'])
+def test_app_debug_when_env_set(monkeypatch, value):
+    monkeypatch.setenv('FLASK_DEBUG', value)
+    debug = os.environ.get('FLASK_DEBUG', '').lower() in ('1', 'true', 'yes', 'on')
+    assert debug is True
+
+
+def test_app_default_host_is_localhost(monkeypatch):
+    """Host default 127.0.0.1; 0.0.0.0 hanya melalui env HOST."""
+    monkeypatch.delenv('HOST', raising=False)
+    assert os.environ.get('HOST', '127.0.0.1') == '127.0.0.1'
+
+
 # --- Bug 3: key_influences ----------------------------------------------------
 
 def test_predict_returns_influences_for_known_vocabulary(client):
