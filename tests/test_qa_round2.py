@@ -566,18 +566,21 @@ def test_build_advice_cenderung_hoaks_tidak_berubah():
 
 
 def test_predict_model_tidak_ada(client, monkeypatch):
-    """Bila model belum dilatih, /predict tidak crash; balas pesan jelas (500)."""
+    """Bila model belum dilatih, /predict balas 503 + cara memulihkan."""
     import app as app_module
 
     monkeypatch.setattr(app_module, 'model', None)
     monkeypatch.setattr(app_module, 'tfidf', None)
 
     response = client.post('/predict', json={'text': 'Teks apa saja di sini.'})
-    assert response.status_code == 500
+    assert response.status_code == 503
     data = response.get_json()
     assert 'error' in data
     assert 'belum siap' in data['error'].lower()
     assert 'train_model' in data['error'].lower()
+    assert 'en' in data['models_missing']
+    assert 'train_model_id.py' in data['recovery']['id']
+    assert 'restart' in data['recovery']['after'].lower()
 
 
 def test_health_model_tidak_ada(client, monkeypatch):
@@ -599,3 +602,18 @@ def test_health_model_tidak_ada(client, monkeypatch):
     assert data['vectorizer_loaded'] is False
     assert data['models']['en']['loaded'] is False
     assert data['models']['id']['loaded'] is False
+    # /health harus menyebut model mana yang tidak tersedia.
+    assert set(data['models_missing']) == {'en', 'id'}
+    assert data['models']['en']['missing'] is True
+    assert data['models']['id']['missing'] is True
+    assert 'train_model' in data['model_recovery']
+
+
+def test_ui_menampilkan_pesan_pemulihan_503(client):
+    """UI tidak boleh menimpa pesan 503 dengan pesan 'server bermasalah'."""
+    response = client.get('/')
+    assert response.status_code == 200
+    html = response.get_data(as_text=True)
+    assert 'status === 503' in html
+    assert 'Model belum siap' in html
+    assert 'models_missing' in html

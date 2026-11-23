@@ -1005,6 +1005,16 @@
             if (status === 429) {
                 return 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.';
             }
+            if (status === 503) {
+                // 503 = model belum tersedia. Tampilkan pesan pemulihan dari server,
+                // jangan ditimpa pesan generik "server bermasalah".
+                const dasar = (data && data.error) ? data.error
+                    : 'Model belum siap. Jalankan train_model.py atau train_model_id.py, lalu restart server.';
+                const hilang = (data && Array.isArray(data.models_missing) && data.models_missing.length)
+                    ? ' Model yang belum tersedia: ' + data.models_missing.join(', ') + '.'
+                    : '';
+                return dasar + hilang;
+            }
             if (status >= 500) {
                 return 'Server sedang bermasalah. Coba lagi beberapa saat.';
             }

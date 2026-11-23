@@ -105,6 +105,27 @@ def current_rate_limit() -> str:
     return app.config.get('RATE_LIMIT', RATE_LIMIT)
 
 
+def missing_models(primary_unavailable: bool = False) -> list[str]:
+    """Daftar model yang tidak tersedia pada runtime ini.
+
+    ``primary_unavailable`` dipakai oleh /predict saat alias ``model``/``tfidf``
+    kosong walaupun artefak Inggris masih ada di disk (mis. monkeypatch tes).
+    """
+    missing = []
+    if primary_unavailable or model_en is None or tfidf_en is None:
+        missing.append('en')
+    if model_id is None or tfidf_id is None:
+        missing.append('id')
+    return missing
+
+
+MODEL_UNAVAILABLE_MESSAGE = (
+    'Model belum siap. Jalankan train_model.py (Inggris) atau '
+    'train_model_id.py (Indonesia), lalu restart server. '
+    'Lihat README.md bagian "Cara menjalankan dari nol".'
+)
+
+
 @app.errorhandler(429)
 def too_many_requests(error):
     return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
@@ -1028,7 +1049,17 @@ def get_metrics():
 @limiter.limit(current_rate_limit)
 def predict():
     if model is None or tfidf is None:
-        return jsonify({'error': 'Model belum siap. Jalankan train_model.py terlebih dahulu.'}), 500
+        # 503 = service unavailable (bukan server error): artefak memang belum
+        # dibuat/dimuat. Berikan pesan pemulihan yang dapat ditindaklanjuti.
+        return jsonify({
+            'error': MODEL_UNAVAILABLE_MESSAGE,
+            'models_missing': missing_models(primary_unavailable=True),
+            'recovery': {
+                'en': 'python train_model.py',
+                'id': 'python train_model_id.py',
+                'after': 'Restart server, lalu cek GET /health.',
+            },
+        }), 503
 
     data = request.get_json(silent=True)
     if not data or 'text' not in data:
@@ -1340,24 +1371,30 @@ def health():
         except Exception:
             feedback_count = 0
 
+    missing = missing_models()
     return jsonify({
         'status': 'healthy',
         'model_loaded': model is not None,
         'vectorizer_loaded': tfidf is not None,
         'feature_weights_loaded': len(feature_weights) > 0,
         'decision_threshold': DECISION_THRESHOLD,
+        # Model mana yang tidak tersedia (list kosong = semua siap).
+        'models_missing': missing,
+        'model_recovery': MODEL_UNAVAILABLE_MESSAGE if missing else None,
         'models': {
             'en': {
                 'loaded': model_en is not None,
                 'vectorizer_loaded': tfidf_en is not None,
                 'feature_weights_loaded': len(feature_weights_en) > 0,
                 'decision_threshold': DECISION_THRESHOLD_EN,
+                'missing': 'en' in missing,
             },
             'id': {
                 'loaded': model_id is not None,
                 'vectorizer_loaded': tfidf_id is not None,
                 'feature_weights_loaded': len(feature_weights_id) > 0,
                 'decision_threshold': DECISION_THRESHOLD_ID,
+                'missing': 'id' in missing,
             },
         },
         'feedback_samples_pending_retrain': feedback_count
