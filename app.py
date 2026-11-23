@@ -832,11 +832,10 @@ def find_similar_debunked(text, top_k=DEBUNK_TOP_K):
 
 # ---------------------------------------------------------------------------
 # TAHAP C: Loader opsional IndoBERT (fine-tuned via Google Colab GPU).
-# Dipakai untuk teks Indonesia bila folder models/indobert/ tersedia dan
-# dependensi (torch + transformers) terpasang; jika tidak, fallback ke model
-# lama (TF-IDF + LogisticRegression). MODEL_RELIABLE tetap ditentukan oleh
-# metrik di model card (hold-out akurasi >= 85%), tidak otomatis hanya karena
-# model tersedia.
+# Dipakai untuk teks Indonesia HANYA bila folder models/indobert/ tersedia,
+# semua checksum di checksums.txt cocok, dan dependensi terpasang. Jika tidak,
+# fallback ke model lama (TF-IDF + LogisticRegression). MODEL_RELIABLE tidak
+# ditentukan di sini: dihitung reliability.py dari hold-out v3 (Butir 4).
 # ---------------------------------------------------------------------------
 INDOBERT_MODEL = None
 INDOBERT_TOKENIZER = None
@@ -845,21 +844,59 @@ _INDOBERT_READY = False
 INDOBERT_THRESHOLD = 0.5
 
 
+def _indobert_checksums_ok(indobert_dir=INDOBERT_DIR):
+    """True hanya jika checksums.txt ada dan SEMUA entri cocok.
+
+    Mengembalikan (ok, alasan). Tidak ada model yang dimuat bila berkas
+    checksum hilang/tidak cocok — mencegah artefak setengah jadi dipakai.
+    """
+    checksums = os.path.join(indobert_dir, 'checksums.txt')
+    if not os.path.isdir(indobert_dir):
+        return False, 'folder models/indobert/ tidak ada'
+    if not os.path.exists(checksums):
+        return False, 'models/indobert/checksums.txt tidak ada'
+    verified = 0
+    try:
+        with open(checksums, 'r', encoding='utf-8') as fh:
+            for line in fh:
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split(None, 1)
+                if len(parts) != 2:
+                    continue
+                expected, name = parts[0].lower(), parts[1].strip().replace('./', '')
+                path = os.path.join(indobert_dir, name)
+                if not os.path.isfile(path):
+                    return False, f'berkas {name} tidak ada'
+                with open(path, 'rb') as f:
+                    actual = hashlib.sha256(f.read()).hexdigest()
+                if actual != expected:
+                    return False, f'checksum {name} tidak cocok'
+                verified += 1
+    except Exception as exc:
+        return False, f'gagal membaca checksums.txt: {exc}'
+    if verified < 2:
+        return False, 'checksum terlalu sedikit (minimal 2 berkas)'
+    return True, f'{verified} berkas terverifikasi'
+
+
 def _load_indobert_optional():
-    """Muha-muat IndoBERT dari models/indobert/ (hanya sekali)."""
+    """Muat IndoBERT dari models/indobert/ (hanya sekali, checksum harus cocok)."""
     global INDOBERT_MODEL, INDOBERT_TOKENIZER, INDOBERT_DEVICE, \
         _INDOBERT_READY, INDOBERT_THRESHOLD
     if _INDOBERT_READY:
         return
     _INDOBERT_READY = True
+    ok, reason = _indobert_checksums_ok()
+    if not ok:
+        print(f'TAHAP C: IndoBERT dilewati ({reason}), fallback ke model lama.')
+        return
     try:
         import torch
         from transformers import AutoTokenizer, AutoModelForSequenceClassification
     except Exception:
         print('TAHAP C: torch/transformers tidak terpasang, fallback ke model lama.')
-        return
-    if not os.path.isdir(INDOBERT_DIR):
-        print('TAHAP C: folder models/indobert/ tidak tersedia, fallback ke model lama.')
         return
     try:
         INDOBERT_DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -1358,6 +1395,11 @@ def health():
             'reasons': list(RELIABILITY['reasons']),
             'result_path': RELIABILITY['result_path'],
             'rules': dict(RELIABILITY['rules']),
+        },
+        'indobert': {
+            'checksums_ok': _indobert_checksums_ok()[0],
+            'checksum_reason': _indobert_checksums_ok()[1],
+            'loaded': INDOBERT_MODEL is not None,
         },
         'models': {
             'en': {
