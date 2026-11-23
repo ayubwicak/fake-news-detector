@@ -380,6 +380,19 @@ def main(argv=None) -> int:
         return 3 if "sudah pernah dijalankan" in reason else 2
 
     rows = _read_rows(args.csv)
+    source_counts: dict[str, int] = defaultdict(int)
+    for row in rows:
+        source = (row.get("nama_sumber") or row.get("sumber_url") or "").strip().lower()
+        source_counts[source or "(kosong)"] += 1
+    holdout_profile = {
+        "n": len(rows),
+        "n_valid": sum(1 for r in rows if int(r["label"]) == 0),
+        "n_hoax": sum(1 for r in rows if int(r["label"]) == 1),
+        "n_sources": len([s for s in source_counts if s != "(kosong)"]),
+        "max_source_share": (max(source_counts.values()) / len(rows)) if rows else 0.0,
+        "n_topics": len({(r.get("topik") or "").strip() for r in rows}),
+        "n_forms": len({(r.get("bentuk") or "").strip() for r in rows}),
+    }
     candidates = {
         "tfidf_lr_id": _load_tfidf_candidate(rows),
         "sent_trans_lr": _load_sent_trans_candidate(rows),
@@ -395,6 +408,7 @@ def main(argv=None) -> int:
         },
         "rerun_acknowledged": args.rerun_acknowledged,
         "previous_result_sha256": info.get("previous_result_sha256"),
+        "holdout_profile": holdout_profile,
         "candidates": candidates,
         "claim_matching": _claim_matching(rows),
         "notes": [

@@ -723,43 +723,15 @@ except Exception as e:
     print(f"Warning: Could not load evaluation metrics: {e}")
 
 # ---------------------------------------------------------------------------
-# Honest model-reliability flag.
-# The model is considered reliable ONLY if hold-out Indonesia accuracy >= 85%.
-# TAHAP 2 showed best hold-out accuracy = 67.96% (< 85%), so MODEL_RELIABLE=False.
+# Gerbang keandalan: MODEL_RELIABLE DIHITUNG dari logs/holdout_v3_result.json.
+# Tidak ada penulisan manual dan tidak ada jalur pintas dari metrik hold-out v2
+# atau model card IndoBERT (keduanya bukan bukti untuk hold-out v3).
 # ---------------------------------------------------------------------------
-MODEL_RELIABLE = False
-try:
-    comparison_path = os.path.join(LOGS_DIR, "model_comparison_id_v2.json")
-    if os.path.exists(comparison_path):
-        with open(comparison_path, "r") as f:
-            comparison = json.load(f)
-        best_acc = None
-        for group in ("holdout_v2",):
-            for entry in comparison.get("results", {}).get(group, []):
-                acc = entry.get("accuracy")
-                if acc is not None:
-                    best_acc = acc if best_acc is None else max(best_acc, acc)
-        if best_acc is not None:
-            MODEL_RELIABLE = bool(best_acc >= 0.85)
-        print(f"MODEL_RELIABLE={MODEL_RELIABLE} (best hold-out accuracy={best_acc})")
-except Exception as e:
-    print(f"Warning: Could not determine MODEL_RELIABLE: {e}")
+from reliability import compute_model_reliable  # noqa: E402
 
-# TAHAP C: model card IndoBERT (models/indobert/metrics.json) dapat mengeset
-# MODEL_RELIABLE=True jika hold-out akurasi >= 85%. Tetap False bila tidak ada
-# metrik yang memenuhi syarat (jangan mengakui model andal secara sepihak).
-try:
-    indo_met_path = os.path.join(INDOBERT_DIR, 'metrics.json')
-    if os.path.exists(indo_met_path):
-        with open(indo_met_path, 'r', encoding='utf-8') as f:
-            indo_met = json.load(f)
-        ho = indo_met.get('holdout_v2', {})
-        acc = ho.get('accuracy')
-        if acc is not None and float(acc) >= 0.85:
-            MODEL_RELIABLE = True
-            print(f"MODEL_RELIABLE=True (IndoBERT model card hold-out accuracy={float(acc)})")
-except Exception as e:
-    print(f"Warning: Could not read IndoBERT model card: {e}")
+RELIABILITY = compute_model_reliable()
+MODEL_RELIABLE = bool(RELIABILITY['reliable'])
+print(f"MODEL_RELIABLE={MODEL_RELIABLE} ({'; '.join(RELIABILITY['reasons']) or 'semua gerbang lulus'})")
 
 # ---------------------------------------------------------------------------
 # TAHAP B: Pencocokan dengan hoaks yang sudah dibantah (debunked-claim index).
@@ -1381,6 +1353,12 @@ def health():
         # Model mana yang tidak tersedia (list kosong = semua siap).
         'models_missing': missing,
         'model_recovery': MODEL_UNAVAILABLE_MESSAGE if missing else None,
+        'model_reliability': {
+            'reliable': bool(RELIABILITY['reliable']),
+            'reasons': list(RELIABILITY['reasons']),
+            'result_path': RELIABILITY['result_path'],
+            'rules': dict(RELIABILITY['rules']),
+        },
         'models': {
             'en': {
                 'loaded': model_en is not None,

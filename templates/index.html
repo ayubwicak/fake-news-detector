@@ -619,6 +619,15 @@
         }
         .experimental-notice strong { color: #4d3400; }
 
+        /* Mode keandalan dirender dari gerbang hold-out v3 (bukan ditulis manual). */
+        .system-mode {
+            margin: 0 0 0.5rem;
+            font-size: 0.78rem;
+            line-height: 1.5;
+        }
+        .system-mode[data-mode="experimental"] { color: #6d4c00; }
+        .system-mode[data-mode="reliable"] { color: #1b5e20; }
+
         .debunked-section {
             margin-top: 0.5rem;
             padding: 0.75rem 0.9rem;
@@ -940,6 +949,14 @@
         </section>
 
     </div>
+
+    <p id="system-mode" class="system-mode" data-mode="{{ 'reliable' if model_reliable else 'experimental' }}">
+        {% if model_reliable %}
+        Mode tervalidasi: hold-out v3 memenuhi semua gerbang keandalan. Tetap verifikasi ke sumber tepercaya.
+        {% else %}
+        Mode eksperimental: indikasi awal, bukan jaminan. Hasil belum memenuhi gerbang keandalan hold-out v3.
+        {% endif %}
+    </p>
 
     <p class="system-detect" style="display:none;">Fake News Detection System</p>
 
