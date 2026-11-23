@@ -2,11 +2,11 @@
 
 ## Sumber data yang digunakan
 
-| # | Nama sumber | URL | Lisensi | Baris dimuat | Catatan |
-|---|-------------|-----|---------|--------------|---------|
-| 1 | Hugging Face: Rifky/indonesian-hoax-news | https://huggingface.co/datasets/Rifky/indonesian-hoax-news | Public (no card) | 7,940 | 17.806 baris asli dari turnbackhoax.id; label diturunkan dari awalan `[SALAH]`/`[BENAR]` pada judul. Digunakan sebagai data pelatihan utama. |
-| 2 | Mendeley / ICTS-2017 (Pratiwi, Asmara & Rahutomo 2017) | https://data.mendeley.com/datasets/p3hfgr5j3m/1 | CC BY 4.0 | 547 | 600 asli; 12 topik, label oleh 3 anotator dengan voting. Digunakan sebagai test set out-of-source (tidak pernah dilatih). |
-| 3 | Manual hold-out (penulis) | internal | Asli (tulis ulang) | 103 | Hanya untuk evaluasi, tidak pernah dilatih atau tuning threshold. |
+| # | Nama sumber | URL | Lisensi | Labeler | Baris dimuat | Catatan |
+|---|-------------|-----|---------|---------|--------------|---------|
+| 1 | Hugging Face: Rifky/indonesian-hoax-news | https://huggingface.co/datasets/Rifky/indonesian-hoax-news | Public (no card) | Otomatis (label diturunkan dari awalan `[SALAH]`/`[BENAR]` pada judul, tidak ada anotator manusia) | 7,940 | 17.806 baris asli dari turnbackhoax.id. Digunakan sebagai data pelatihan utama. |
+| 2 | Mendeley / ICTS-2017 (Pratiwi, Asmara & Rahutomo 2017) | https://data.mendeley.com/datasets/p3hfgr5j3m/1 | CC BY 4.0 | 3 anotator manusia dengan voting mayoritas | 547 | 600 asli; 12 topik, label oleh 3 anotator dengan voting. Digunakan sebagai test set out-of-source (tidak pernah dilatih). |
+| 3 | Manual hold-out (penulis) | internal | Asli (tulis ulang) | Penulis (satu orang, tidak ada cross-check independen) | 103 | Hanya untuk evaluasi, tidak pernah dilatih atau tuning threshold. **Belum diverifikasi secara independen.** |
 
 ## Sumber yang tersedia tapi tidak dapat dimuat otomatis (dokumentasi saja)
 
@@ -66,3 +66,13 @@ Hasil audit tersimpan di `logs/dataset_id_audit.json` dan `logs/source_x_label.j
 - Dataset Mendeley ICTS-2017 berlisensi CC BY 4.0 — dapat digunakan untuk pelatihan model.
 - Artikel media dari sumber komersial (Kompas, Detik, CNN Indonesia, dll.) tetap hak cipta milik masing-masing pemilik. Dataset ini **tidak** menyimpan teks penuh artikel media tersebut secara massal; jika digunakan, simpan sebagai tautan + fitur turunan saja.
 - Hold-out manual (`holdout_id_v2.csv`) adalah tulisan ulang asli penulis, bukan salinan artikel berhak cipta.
+
+## ⚠️ Status verifikasi hold-out
+
+Hold-out manual (`holdout_id_v2.csv`, 103 baris) **belum diverifikasi secara independen**:
+- Ditulis dan diberi label oleh satu orang (penulis), tanpa cross-check anotator kedua.
+- Tidak pernah digunakan dalam pelatihan atau tuning threshold (keadaan baik),
+  tetapi karena belum diverifikasi independen, metrik hold-out **harus diperlakukan
+  sebagai indikasi awal**, bukan bukti akurasi produksi yang definitif.
+- Akurasi hold-out terbaik tercatat 67,96% (di bawah ambang 85%), jadi model
+  Bahasa Indonesia **tidak dianggap andal** untuk deteksi hoaks produksi (`MODEL_RELIABLE=false`).
