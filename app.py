@@ -987,6 +987,11 @@ def predict():
             'error': 'Parameter "text" harus berupa teks (must be a string).'
         }), 400
 
+    # Validate input type - must be a string
+    raw_text = data.get('text')
+    if not isinstance(raw_text, str):
+        return jsonify({'error': 'Parameter "text" must be a string.'}), 400
+
     raw_text = raw_text.strip()
     # Normalize Unicode (NFKC): convert full-width chars to standard, remove compatibility
     raw_text = unicodedata.normalize('NFKC', raw_text)
@@ -1209,7 +1214,6 @@ def feedback():
         }), 400
 
     text_hash = hashlib.sha256((text + str(label)).encode('utf-8')).hexdigest()
-
     os.makedirs(DATA_DIR, exist_ok=True)
 
     # --- Deduplikasi berdasarkan hash teks+label ---------------------------
