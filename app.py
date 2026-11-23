@@ -29,6 +29,15 @@ app.config.setdefault(
 )
 limiter = Limiter(app=app, key_func=get_remote_address)
 
+# ---------------------------------------------------------------------------
+# Batas input (antisipasi DoS / payload besar)
+# ---------------------------------------------------------------------------
+# Maksimal panjang teks yang dikirim ke /predict (karakter, setelah strip).
+MAX_TEXT_CHARS = int(os.environ.get('MAX_TEXT_CHARS', '20000'))
+# Maksimal ukuran body request (256 KB). Flask akan menanggapi 413 terlebih
+# dahulu sebelum memproses body.
+app.config['MAX_CONTENT_LENGTH'] = 256 * 1024
+
 
 def current_rate_limit() -> str:
     """Return the active rate limit (config first, env/default as fallback)."""
@@ -38,6 +47,13 @@ def current_rate_limit() -> str:
 @app.errorhandler(429)
 def too_many_requests(error):
     return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({
+        'error': f'Request terlalu besar. Maksimal {app.config["MAX_CONTENT_LENGTH"] // 1024} KB.'
+    }), 413
 
 # ---------------------------------------------------------------------------
 # Honest result reporting: three-zone status, red-flag rules, language hint.
@@ -94,7 +110,9 @@ _SHORTENER_RE = re.compile(
     r'\b(?:bit\.ly|tinyurl\.com|t\.co|s\.id|cutt\.ly)\b', re.IGNORECASE)
 _URL_RE = re.compile(r'(?:https?://|www\.)[^\s<>"\']+', re.IGNORECASE)
 _DOMAIN_RE = re.compile(
-    r'\b(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}\b',
+    # Satu titik (label.tld): linear, tidak ada nested quantifier, aman dari
+    # ReDoS bahkan saat findall dijalankan pada input ribuan karakter.
+    r'\b[a-z0-9-]+\.[a-z]{2,}\b',
     re.IGNORECASE,
 )
 
@@ -122,7 +140,11 @@ def _has_suspicious_link(text: str) -> bool:
         host = (urlparse(candidate).hostname or '').lower().rstrip('.')
         if not (host == 'go.id' or host.endswith('.go.id')):
             return True
-    for domain in _DOMAIN_RE.findall(text):
+    # Periksa domain tulis (tanpa skema) hanya pada teks non-URL agar
+    # subdomain *.go.id di dalam URL tidak salah terdeteksi (mis. kominfo.go
+    # di dalam https://kominfo.go.id/...).  Pola satu titik = linear, aman ReDoS.
+    text_tanpa_url = _URL_RE.sub(' ', text)
+    for domain in _DOMAIN_RE.findall(text_tanpa_url):
         host = domain.lower().rstrip('.')
         if not (host == 'go.id' or host.endswith('.go.id')):
             return True
@@ -792,6 +814,11 @@ def predict():
     raw_text = unicodedata.normalize('NFKC', raw_text)
     if len(raw_text) < 10:
         return jsonify({'error': 'Teks terlalu pendek. Masukkan minimal 10 karakter.'}), 400
+
+    if len(raw_text) > MAX_TEXT_CHARS:
+        return jsonify({
+            'error': f'Teks terlalu panjang. Maksimal {MAX_TEXT_CHARS:,} karakter.'
+        }), 400
 
     # Detect language using lexicon-based approach
     lang_result = detect_language(raw_text)

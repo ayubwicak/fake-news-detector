@@ -300,6 +300,11 @@
             margin-top: 0.5rem;
         }
 
+        .char-count.limit-exceeded {
+            color: var(--danger, #c0392b);
+            font-weight: 600;
+        }
+
         .actions {
             display: flex;
             flex-wrap: wrap;
@@ -817,7 +822,7 @@
 
                 <label class="field-label" for="news-text">Masukkan teks berita</label>
 
-                <textarea id="news-text" placeholder="Tempel teks berita atau pernyataan di sini..." autocomplete="off" spellcheck="false"></textarea>
+                <textarea id="news-text" placeholder="Tempel teks berita atau pernyataan di sini..." autocomplete="off" spellcheck="false" data-max-char="20000" maxlength="20000"></textarea>
 
                 <div class="char-count" id="char-count">0 karakter</div>
 
@@ -938,8 +943,12 @@
         // --- Penghitung karakter + status tombol ---
         function updateCharCount() {
             const length = textarea.value.length;
-            charCount.textContent = length + ' karakter';
-            btnCheck.disabled = length < MIN_CHAR;
+            const maxChar = parseInt(textarea.dataset.maxChar || '20000', 10);
+            charCount.textContent = length + ' / ' + maxChar + ' karakter';
+            const overLimit = length > maxChar;
+            const tooShort = length < MIN_CHAR;
+            charCount.classList.toggle('limit-exceeded', overLimit);
+            btnCheck.disabled = tooShort || overLimit;
         }
 
         // --- Reset tampilan hasil ---
@@ -967,6 +976,9 @@
 
         // --- Pesan galat berbahasa Indonesia ---
         function pesanError(status, data, fallback) {
+            if (status === 413) {
+                return 'Request terlalu besar. Maksimal 20.000 karakter.';
+            }
             if (status === 429) {
                 return 'Terlalu banyak permintaan. Tunggu sebentar lalu coba lagi.';
             }

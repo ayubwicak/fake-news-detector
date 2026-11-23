@@ -315,3 +315,52 @@ def test_training_cleaning_equals_inference_cleaning():
             f"SKEW terdeteksi untuk {teks!r}: "
             f"training={hasil_training!r} inferensi={hasil_inferensi!r}"
         )
+
+
+# --- Item 2: batas input + ReDoS ----------------------------------------------
+
+import re  # noqa: E402  (diimpor di sini untuk tes ReDoS)
+
+
+def test_domain_regex_not_redos():
+    """_DOMAIN_RE harus cepat pada input berulang panjang (anti ReDoS).
+
+    Target < 0.1 detik pada input 20.000 karakter berulang.
+    """
+    from app import _DOMAIN_RE
+    berulang = 'a.b.c.d.e.f.' * 2000  # ~20.000 karakter
+    import time
+    t0 = time.perf_counter()
+    _DOMAIN_RE.findall(berulang)
+    dt = time.perf_counter() - t0
+    assert dt < 0.1, f'_DOMAIN_RE terlambat: {dt:.3f}s (target < 0.1s)'
+
+
+def test_predict_rejects_text_over_max_chars(client):
+    """Teks lebih dari MAX_TEXT_CHARS (20.000) ditolak dengan 400 + pesan Indonesia."""
+    max_chars = app_module.MAX_TEXT_CHARS
+    terlalu_panjang = 'x ' * (max_chars // 2 + 10)  # melebihi batas
+    response = client.post('/predict', json={'text': terlalu_panjang})
+    assert response.status_code == 400
+    data = response.get_json()
+    assert 'terlalu panjang' in data['error'].lower()
+    # Format angka Indonesia (pemisah ribuan koma)
+    assert '20,000' in data['error']
+
+
+def test_predict_accepts_text_at_max_chars(client):
+    """Teks tepat MAX_TEXT_CHARS karakter masih diproses (batas inklusif)."""
+    max_chars = app_module.MAX_TEXT_CHARS
+    tepat_batas = 'a ' * (max_chars // 2)  # tepat 20.000 karakter
+    assert len(tepat_batas) == max_chars
+    response = client.post('/predict', json={'text': tepat_batas})
+    # Teks 'a ' berulang bukan bahasa yang didukung, tapi harus diproses (400 karena
+    # hanya simbol/angka setelah pembersihan) BUKAN ditolak karena panjang.
+    assert response.status_code in (200, 400)
+    if response.status_code == 400:
+        assert 'terlalu panjang' not in response.get_json()['error'].lower()
+
+
+def test_max_content_length_config():
+    """MAX_CONTENT_LENGTH = 256 KB (Flask menanggapi 413 sebelum memproses body)."""
+    assert app.config['MAX_CONTENT_LENGTH'] == 256 * 1024
