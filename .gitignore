@@ -11,6 +11,7 @@ data/raw/
 data/raw_*.csv
 data/*_oos.csv
 data/feedback*.csv
+data/feedback.csv.bak
 data/holdout_id_v3.csv
 models/**/*.pkl
 models/**/*.npy
