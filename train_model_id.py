@@ -23,6 +23,7 @@ Usage:
 
 from __future__ import annotations
 
+import argparse
 import json
 import os
 import sys
@@ -66,8 +67,14 @@ MAX_FEATURES = 30000
 N_BOOTSTRAP = 1000
 
 
-def load_dataset() -> tuple[pd.DataFrame, str]:
-    """Load data/train_id.csv, merge human feedback, and clean text."""
+def load_dataset(allow_sample: bool = False) -> tuple[pd.DataFrame, str]:
+    """Load data/train_id.csv, merge human feedback, and clean text.
+
+    ``data/sample_news_id.csv`` hanya boleh digunakan sebagai fallback terakhir
+    dan secara eksplisit melalui ``--allow-sample``. Data sampel tidak
+    mewakili distribusi hoaks Indonesia sebenarnya; model yang dilatih di
+    atasnya tidak dianggap andal untuk produksi.
+    """
     candidates = [
         os.path.join(DATA_DIR, "train_id.csv"),
         os.path.join(DATA_DIR, "sample_news_id.csv"),
@@ -76,6 +83,24 @@ def load_dataset() -> tuple[pd.DataFrame, str]:
     if source is None:
         raise FileNotFoundError(
             "data/train_id.csv not found. Run: python scripts/prepare_dataset_id.py"
+        )
+
+    using_sample = source.endswith("sample_news_id.csv")
+    if using_sample and not allow_sample:
+        raise RuntimeError(
+            "BERHENTI: data/train_id.csv tidak tersedia. "
+            "Hanya tersedia data/sample_news_id.csv yang bukan merupakan "
+            "data hoaks Indonesia representatif. Model yang dilatih di atasnya "
+            "TIDAK dianggap andal untuk produksi. "
+            "Jika Anda memang ingin melatih dengan sampel sebagai coba-coba, "
+            "jalankan ulang dengan flag --allow-sample."
+        )
+
+    if using_sample:
+        print(
+            "PERINGATAN KERAS: pelatihan menggunakan data/sample_news_id.csv "
+            "(fallback, bukan data asli). Hasil model ini bersifat eksperimental "
+            "dan TIDAK boleh diklaim andal untuk deteksi hoaks produksi."
         )
 
     df = pd.read_csv(source)
@@ -236,12 +261,12 @@ def evaluate_holdout(vectorizer, model, threshold: float) -> dict | None:
     }
 
 
-def train_and_evaluate() -> dict:
+def train_and_evaluate(allow_sample: bool = False) -> dict:
     print("=" * 68)
     print("  INDONESIAN FAKE-NEWS DETECTOR — LEAKAGE-FREE PIPELINE")
     print("=" * 68)
 
-    df, source_path = load_dataset()
+    df, source_path = load_dataset(allow_sample=allow_sample)
     print(f"Total samples: {len(df):,}")
     print(f"Class distribution: {df['label'].value_counts().sort_index().to_dict()}")
 
@@ -422,4 +447,11 @@ def train_and_evaluate() -> dict:
 
 
 if __name__ == "__main__":
-    train_and_evaluate()
+    parser = argparse.ArgumentParser(
+        description="Pipeline pelatihan model Indonesia (leakage-free).")
+    parser.add_argument(
+        "--allow-sample", action="store_true",
+        help="Izinkan fallback ke data/sample_news_id.csv bila train_id.csv "
+        "tidak tersedia (eksperimental, tidak andal untuk produksi).")
+    args = parser.parse_args()
+    train_and_evaluate(allow_sample=args.allow_sample)

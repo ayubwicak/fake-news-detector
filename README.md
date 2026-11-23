@@ -23,7 +23,8 @@ A production-grade Machine Learning web application that classifies news article
 - **Leakage-free pipeline** — split first, TF-IDF fit on train only, SMOTETomek on train only.
 - **Shortcut removal** — strips "Reuters" agency markers (96.5% → ~0% leakage signal).
 - **Model selection by evidence** — 3-fold CV comparison of LinearSVC, Logistic Regression, Naive Bayes.
-- **Threshold tuning** — decision threshold 0.44 optimized on a validation split, not on test.
+- **Threshold tuning** — decision threshold 0.44 (English) / 0.31 (Indonesian)
+  optimized on a validation split, not on test.
 - **Explainable AI (XAI)** — 18,982 weighted n-gram features surfaced per prediction.
 - **REST API** — `/predict`, `/metrics`, `/feedback`, `/health`.
 - **Modern Web UI** — dark glassmorphism dashboard with probability bars, XAI pills, and feedback buttons.
@@ -374,7 +375,8 @@ The API returns the top influential unigrams/bigrams per prediction, rendered in
 
 - English-only vocabulary; Indonesian text requires a local dataset or IndoBERT.
 - TF-IDF + linear models capture lexical patterns, not deep semantics.
-- Dataset labels are inherited from the source; real-world drift requires periodic retraining.
+- Train/test split is randomized with label stratification, **not** by source;
+  real-world drift requires periodic retraining.
 - The model should assist — not replace — human fact-checking.
 
 ### Model Bahasa Indonesia — status keandalan (Saring Berita)
