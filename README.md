@@ -150,6 +150,16 @@ docker build -t fake-news-detector .
 docker run -p 5000:5000 fake-news-detector
 ```
 
+**Optional ML dependencies (debunk matching + IndoBERT).**  
+The default image installs only `requirements.txt` (Flask, scikit-learn, pandas, numpy, …), so the app starts fast but `similar_debunked` returns `[]` and IndoBERT is unavailable. To enable sentence-transformers / torch:
+
+```bash
+docker build --build-arg INSTALL_ML=true -t fake-news-detector-ml .
+docker run -p 5000:5000 fake-news-detector-ml
+```
+
+Unduhan tambahan sekitar 300–900 MB (torch CPU ~200 MB, sentence-transformers ~100 MB, model embeddings ~100 MB). App tetap berjalan tanpa dependencies berat: `debunk_available` akan `false` di `/predict`, dan UI menampilkan "Fitur pencocokan klaim tidak aktif di server ini".
+
 ---
 
 ## 🔬 Methodology (Why the Numbers Are Trustworthy)
@@ -357,4 +367,5 @@ The API returns the top influential unigrams/bigrams per prediction, rendered in
 - Untuk teks Indonesia, sistem mencocokkan kalimat input dengan indeks judul klaim hoak yang sudah dibantah (turnbackhoax.id) melalui embedding multibahasa.
 - Hasil pencocokan **bukan bukti** bahwa teks adalah hoaks; kemiripan teks hanya indikasi. Buka tautan klarifikasi untuk verifikasi lengkap.
 - Ambang kemiripan (0,66) ditetapkan pada validasi hold-out v2 agar false match pada berita valid rendah (3,51%), dengan presisi pencocokan 86,67% dan recall hoak 28,26%.
+- **Catatan selection bias:** ambang 0,66 dipilih dan dievaluasi pada **hold-out v2 yang sama**, jadi metriknya terjangkau bias seleksi dan 95% Wilson CI-nya lebar. Ambang sengaja tidak diubah; rekalibrasi membutuhkan hold-out v3 independen (belum dilengkapi data).
 - Hanya judul + tautan sumber yang disimpan; tidak ada teks penuh artikel berhak cipta.

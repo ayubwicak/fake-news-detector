@@ -552,11 +552,12 @@ HOAX_EMBED_MODEL = None    # SentenceTransformer (dimuat lazy)
 _index_loaded = False
 DEBUNK_THRESHOLD = 0.66    # default; ditimpa dari logs/debunk_threshold.json bila ada
 DEBUNK_TOP_K = 3
+DEBUNK_AVAILABLE = False   # True bila sentence-transformers + indeks tersedia
 
 
 def _load_debunk_index():
     """Muha-muat indeks embedding hoak yang sudah dibantah (hanya sekali)."""
-    global HOAX_INDEX, HOAX_META, HOAX_EMBED_MODEL, _index_loaded, DEBUNK_THRESHOLD
+    global HOAX_INDEX, HOAX_META, HOAX_EMBED_MODEL, _index_loaded, DEBUNK_THRESHOLD, DEBUNK_AVAILABLE
     if _index_loaded:
         return
     _index_loaded = True
@@ -576,6 +577,7 @@ def _load_debunk_index():
                 except Exception:
                     pass
             print(f"Debunk index dimuat: {len(HOAX_META)} entri, ambang={DEBUNK_THRESHOLD}")
+            DEBUNK_AVAILABLE = True
     except Exception as e:
         print(f"Warning: Tidak dapat memuat indeks debunked: {e}")
 
@@ -813,6 +815,13 @@ def predict():
     if not cleaned:
         return jsonify({'error': 'Teks hanya berisi simbol atau angka. Masukkan teks berita yang valid.'}), 400
 
+    # E: teks terlalu pendek (< 5 kata) -> jangan jalankan model;
+    # kembalikan status teks_terlalu_pendek. Bahasa yang tidak terdeteksi
+    # dengan yakin tetap dianalisis dengan model fallback (perilaku yang sudah
+    # ada sebelumnya) agar kompatibel dengan pemanggil lama.
+    word_count = len(raw_text.split())
+    short_text = (word_count < 5)
+
     # Select per-language artefacts: Indonesian text uses the Indonesian model,
     # everything else (English, regional, unknown) falls back to the English
     # primary model.  This keeps predictions in-domain while degrading
@@ -837,37 +846,49 @@ def predict():
         active_threshold = INDOBERT_THRESHOLD
 
     # Vectorize (hanya untuk model TF-IDF; IndoBERT mendapat teks mentah)
-    if use_indobert:
-        vec = None
-    else:
-        vec = active_tfidf.transform([cleaned])
-
-    # Probabilities (calibrated)
-    if use_indobert:
-        prob_fake = indobert_predict_proba(cleaned)
-        if prob_fake is None:
-            # Fallback ke model TF-IDF lama saat IndoBERT gagal inference.
-            use_indobert = False
-            model_used = 'id'
-            active_threshold = DECISION_THRESHOLD_ID
+    # E: jika teks terlalu pendek / bahasa tidak yakin, jangan jalankan model.
+    if not short_text:
+        if use_indobert:
+            vec = None
+        else:
             vec = active_tfidf.transform([cleaned])
+
+        # Probabilities (calibrated)
+        if use_indobert:
+            prob_fake = indobert_predict_proba(cleaned)
+            if prob_fake is None:
+                # Fallback ke model TF-IDF lama saat IndoBERT gagal inference.
+                use_indobert = False
+                model_used = 'id'
+                active_threshold = DECISION_THRESHOLD_ID
+                vec = active_tfidf.transform([cleaned])
+                proba = active_model.predict_proba(vec)[0]
+                prob_real = float(proba[0]) * 100
+                prob_fake = float(proba[1]) * 100
+            else:
+                prob_fake = prob_fake * 100
+                prob_real = 100.0 - prob_fake
+        elif hasattr(active_model, 'predict_proba'):
             proba = active_model.predict_proba(vec)[0]
             prob_real = float(proba[0]) * 100
             prob_fake = float(proba[1]) * 100
         else:
-            prob_fake = prob_fake * 100
-            prob_real = 100.0 - prob_fake
-    elif hasattr(active_model, 'predict_proba'):
-        proba = active_model.predict_proba(vec)[0]
-        prob_real = float(proba[0]) * 100
-        prob_fake = float(proba[1]) * 100
+            prob_real, prob_fake = 0.0, 100.0
     else:
-        prob_real, prob_fake = 0.0, 100.0
+        vec = None
+        prob_real = None
+        prob_fake = None
 
     # Decision uses the tuned threshold (optimized on validation split)
-    pred = 1 if (prob_fake / 100.0) >= active_threshold else 0
-    label = 'Fake' if pred == 1 else 'Real'
-    confidence = prob_fake if pred == 1 else prob_real
+    # E: teks terlalu pendek / bahasa tidak yakin -> jangan buat keputusan model.
+    if short_text:
+        pred = None
+        label = 'Tidak dapat dianalisis'
+        confidence = None
+    else:
+        pred = 1 if (prob_fake / 100.0) >= active_threshold else 0
+        label = 'Fake' if pred == 1 else 'Real'
+        confidence = prob_fake if pred == 1 else prob_real
 
     # Explainability (XAI) - get top influential features.  Tidak tersedia
     # untuk model IndoBERT (basis transformer), maka dikosongkan dengan catatan.
@@ -905,7 +926,10 @@ def predict():
     # Honest three-zone reporting plus rule-based warning signs.  The status
     # is derived from probability_fake as a fraction, independent of the
     # model's binary decision threshold above.
-    status = determine_status(prob_fake / 100.0)
+    if short_text:
+        status = 'teks_terlalu_pendek'
+    else:
+        status = determine_status(prob_fake / 100.0)
     red_flags = detect_red_flags(raw_text)
     language_warning = bool(is_indonesian(raw_text) and model_used == 'en')
     credibility = detect_credibility_signals(raw_text)
@@ -915,20 +939,27 @@ def predict():
     # bahasa lain dikembalikan list kosong agar tidak memuat model embeddings
     # secara tidak perlu.
     similar_debunked = []
-    if lang_code == 'id':
+    # Muat indeks debunk (lazy) sehingga DEBUNK_AVAILABLE terupdate sebelum
+    # kita memutuskan apakah fitur pencocokan tersedia untuk request ini.
+    _load_debunk_index()
+    debunk_available = bool(DEBUNK_AVAILABLE)
+    if lang_code == 'id' and debunk_available:
         try:
             similar_debunked = find_similar_debunked(raw_text, top_k=DEBUNK_TOP_K)
         except Exception:
             similar_debunked = []
 
-    advice = build_advice(status, prob_real, prob_fake, len(red_flags), len(credibility))
+    if short_text:
+        advice = 'Teks terlalu pendek untuk dianalisis. Tempelkan paragraf atau berita yang lebih lengkap.'
+    else:
+        advice = build_advice(status, prob_real, prob_fake, len(red_flags), len(credibility))
 
     return jsonify({
         'prediction': label,
         'label_code': pred,
-        'confidence': round(confidence, 2),
-        'probability_real': round(prob_real, 2),
-        'probability_fake': round(prob_fake, 2),
+        'confidence': None if confidence is None else round(confidence, 2),
+        'probability_real': None if prob_real is None else round(prob_real, 2),
+        'probability_fake': None if prob_fake is None else round(prob_fake, 2),
         'decision_threshold': round(active_threshold, 4),
         'model_used': model_used,
         'snippet': raw_text[:140] + ('...' if len(raw_text) > 140 else ''),
@@ -949,6 +980,7 @@ def predict():
         'advice': advice,
         # TAHAP B: hoak yang sudah dibantah dan mirip dengan teks input.
         'similar_debunked': similar_debunked,
+        'debunk_available': bool(debunk_available),
         # Honest reliability flag: False when hold-out accuracy < 85%.
         'model_reliable': bool(MODEL_RELIABLE),
     })

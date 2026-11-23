@@ -1043,7 +1043,8 @@
         const STATUS_META = {
             cenderung_hoaks: { badgeClass: 'badge--hoaks', label: 'Cenderung hoaks' },
             belum_dapat_disimpulkan: { badgeClass: 'badge--netral', label: 'Belum dapat disimpulkan' },
-            cenderung_valid: { badgeClass: 'badge--valid', label: 'Cenderung valid' }
+            cenderung_valid: { badgeClass: 'badge--valid', label: 'Cenderung valid' },
+            teks_terlalu_pendek: { badgeClass: 'badge--netral', label: 'Teks terlalu pendek' }
         };
 
         function resolveStatus(data) {
@@ -1072,8 +1073,9 @@
             resetResult();
 
             const status = resolveStatus(data);
-            const meta = STATUS_META[status];
-            const advice = data.advice || { judul: meta.label, ringkasan: '', saran: '' };
+            const meta = STATUS_META[status] || STATUS_META.belum_dapat_disimpulkan;
+            const adviceRaw = data.advice || { judul: meta.label, ringkasan: '', saran: '' };
+            const advice = typeof adviceRaw === 'string' ? { judul: meta.label, ringkasan: adviceRaw, saran: '' } : adviceRaw;
             const real = Number(data.probability_real) || 0;
             const fake = Number(data.probability_fake) || 0;
 
@@ -1094,13 +1096,18 @@
             // TAHAP B: Pencocokan dengan klaim yang sudah dibantah (bagian utama
             // saat model belum teruji, bersama ciri berbasis aturan).
             const debunked = Array.isArray(data.similar_debunked) ? data.similar_debunked : [];
+            const debunkAvailable = data.debunk_available === true;
             const debunkSection = makeEl('section', 'result-section debunked-section');
             debunkSection.appendChild(makeEl('h3', 'result-section-title', 'Mirip dengan klaim yang pernah dibantah'));
-            if (debunked.length) {
+            if (!debunkAvailable) {
+                debunkSection.appendChild(makeEl('p', 'debunk-none', 'Fitur pencocokan klaim tidak aktif di server ini.'));
+            } else if (debunked.length) {
                 debunked.forEach(function (item) {
                     const card = makeEl('div', 'debunk-item');
                     const title = makeEl('div', 'debunk-title', item.judul || '');
-                    const sim = makeEl('div', 'debunk-sim', 'Kemiripan: ' + (Number(item.similarity || 0) * 100).toFixed(0) + '%');
+                    const simVal = Number(item.similarity || 0);
+                    const simLabel = simVal >= 0.80 ? 'Sangat mirip' : 'Agak mirip, periksa tautannya';
+                    const sim = makeEl('div', 'debunk-sim', simLabel + ' — kemiripan ' + (simVal * 100).toFixed(0) + '%');
                     const link = makeEl('a', 'debunk-link', 'Lihat klarifikasi sumber');
                     link.href = item.url || '#';
                     link.target = '_blank';

@@ -43,3 +43,9 @@ Binary classification: Valid/Real (0) vs Hoax/Fake (1) Indonesian news text.
 - Hold-out Indonesian accuracy is **below 85%**. The model is NOT reliable.
 - Do not claim the model is reliable for production Indonesian fake-news detection.
 - Results are research-grade and should be treated as experimental.
+
+## Debunked-claim matching threshold (TAHAP B)
+- Default threshold: **0.66** (cosine similarity against hoax index titles).
+- This threshold was selected on the **same hold-out v2 set** used for reporting, so metrics carry selection bias. Cross-validation on hold-out v2 (split A→B / B→A) shows a wide 95% Wilson CI; do not treat 0.66 as a production-calibrated value.
+- The 0.66 threshold is intentionally left unchanged. Recalibration requires an independent hold-out v3 (not yet labelled).
+- Related field `/predict` includes `debunk_available` (false when sentence-transformers or the hoak index is missing at runtime).
