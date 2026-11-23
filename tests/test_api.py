@@ -112,8 +112,9 @@ def test_feedback_saved(client, tmp_path, monkeypatch):
     assert feedback_file.exists()
 
     content = feedback_file.read_text(encoding='utf-8')
-    assert content.startswith('text,label')
+    assert content.startswith('id,timestamp,text_hash,text,label,status,reviewer')
     assert 'perfectly valid news text' in content
+    assert 'baru' in content  # status awal semua feedback baru
 
 
 def test_feedback_invalid_label(client, tmp_path, monkeypatch):

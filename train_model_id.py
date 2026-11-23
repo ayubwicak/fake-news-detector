@@ -87,11 +87,13 @@ def load_dataset() -> tuple[pd.DataFrame, str]:
     df["clean_text"] = df["text"].apply(clean_text)
     df = df[df["clean_text"].str.len() > 30].reset_index(drop=True)
 
-    feedback_path = os.path.join(DATA_DIR, "feedback_id.csv")
+    feedback_path = os.path.join(DATA_DIR, "feedback_reviewed.csv")
     if os.path.exists(feedback_path):
         try:
             feedback = pd.read_csv(feedback_path)
-            if {"text", "label"}.issubset(feedback.columns):
+            # Hanya baris yang telah disetujui reviewer yang boleh masuk pelatihan.
+            if {"text", "label", "status"}.issubset(feedback.columns):
+                feedback = feedback[feedback["status"] == "disetujui"].copy()
                 feedback = feedback.dropna(subset=["text", "label"]).copy()
                 feedback["label"] = feedback["label"].astype(int)
                 feedback["clean_text"] = feedback["text"].apply(clean_text)
@@ -104,7 +106,9 @@ def load_dataset() -> tuple[pd.DataFrame, str]:
                         [df, feedback[["text", "clean_text", "label"]]],
                         ignore_index=True,
                     )
-                    print(f"Merged {len(feedback)} feedback samples from {feedback_path}")
+                    print(f"Merged {len(feedback)} reviewed feedback samples from {feedback_path}")
+                else:
+                    print(f"Tidak ada feedback yang disetujui di {feedback_path}")
         except Exception as exc:  # pragma: no cover - defensive
             print(f"Warning: could not merge feedback: {exc}")
 

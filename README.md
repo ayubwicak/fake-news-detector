@@ -27,7 +27,9 @@ A production-grade Machine Learning web application that classifies news article
 - **Explainable AI (XAI)** — 18,982 weighted n-gram features surfaced per prediction.
 - **REST API** — `/predict`, `/metrics`, `/feedback`, `/health`.
 - **Modern Web UI** — dark glassmorphism dashboard with probability bars, XAI pills, and feedback buttons.
-- **Human feedback loop** — corrections saved to `feedback.csv` and merged on retrain.
+- **Human feedback loop** — corrections saved to `feedback.csv` (status `"baru"`),
+  direview via `scripts/review_feedback.py`, lalu digabung pada retrain hanya
+  bila status `"disetujui"`.
 - **19 automated tests** — API edge cases, pipeline logic, feedback validation.
 - **Deployment ready** — Dockerfile, Procfile (Gunicorn), requirements split (runtime/dev).
 - **EDA notebook** — executed with leakage audit, word clouds, confusion matrix, ROC curve.
@@ -250,31 +252,51 @@ curl -X POST http://127.0.0.1:5000/feedback \
 | `/metrics` | GET | Evaluation metrics + methodology flags |
 | `/health` | GET | Health, threshold, pending feedback count |
 
-**Rate limiting** — `/predict`, `/feedback`, and `/metrics` allow 30 requests
-per minute per IP by default (`429` with a JSON error when exceeded). Override
-with `RATE_LIMIT_PER_MINUTE` (e.g. `10 per minute`) and set
-`RATE_LIMIT_STORAGE_URI` to a shared backend (e.g. Redis) for multi-worker
-deployments. `/` and `/health` are deliberately unlimited for UI and uptime
-checks.
+**Rate limiting** — `/predict`, `/feedback`, dan `/metrics` membatasi 30 request
+per menit per IP secara default (`429` dengan JSON error saat melebihi). Override
+dengan `RATE_LIMIT_PER_MINUTE` (mis. `10 per minute`). Untuk multi-worker,
+setel `RATE_LIMIT_STORAGE_URI` ke backend bersama (mis. Redis); `memory://`
+tidak sinkron antar worker dan akan mencetak peringatan saat start. Di balik
+proxy, gunakan `TRUSTED_PROXIES=N` (default 0 = abaikan header
+`X-Forwarded-For`, gunakan alamat koneksi langsung) bersama
+`werkzeug.middleware.proxy_fix.ProxyFix` agar IP klien teridentifikasi dengan
+benar. `/` dan `/health` sengaja tidak dibatasi untuk UI dan pemantauan uptime.
 
-`POST /feedback` only accepts labels `0`/`1` (numbers or strings); booleans and
-other values are rejected with `400`.
+`POST /feedback` hanya menerima label `0`/`1` (angka atau string); boolean dan
+nilai lainnya ditolak dengan `400`. Masukan baru disimpan ke
+`data/feedback.csv` dengan status `"baru"` dan kolom tambahan
+(`id`, `timestamp`, `text_hash`, `status`, `reviewer`). Hanya baris dengan
+status `"disetujui"` yang digunakan saat pelatihan ulang.
 
 ---
 
 ## 🔁 Continuous Improvement (Feedback Loop)
 
 ```
-Predict → Human verifies → feedback.csv → retrain → evaluate on holdout
+Predict → Human verifies → feedback.csv (status "baru") → review
+  → feedback_reviewed.csv (status "disetujui") → retrain → evaluate on holdout
 ```
 
-1. **Collect** — UI buttons (✅ Benar / ❌ Sebenarnya Real / ❌ Sebenarnya Fake) or bulk:
+1. **Collect** — tombol UI (✅ Benar / ❌ Sebenarnya Real / ❌ Sebenarnya Fake)
+   atau bulk import:
    ```bash
    python scripts/import_feedback.py data/koreksi.csv
    ```
-2. **Retrain** — `python train_model.py` (auto-merges feedback, deduplicated).
-3. **Measure honestly** — `python scripts/batch_test.py data/batch_holdout.csv`
-4. **Tune** — `python scripts/tune_model.py`
+   Setiap masukan baru disimpan ke `data/feedback.csv` dengan status `"baru"`.
+2. **Review** — tinjau baris "baru" satu per satu dan setujui/tolak:
+   ```bash
+   python scripts/review_feedback.py
+   ```
+   Hasilnya ditulis ke `data/feedback_reviewed.csv` dengan status `"disetujui"`
+   atau `"ditolak"`.
+3. **Retrain** — `python train_model.py` (auto-merges hanya baris
+   `"disetujui" dari `feedback_reviewed.csv`, deduplikasi).
+4. **Measure honestly** — `python scripts/batch_test.py data/batch_holdout.csv`
+5. **Tune** — `python scripts/tune_model.py`
+
+> Masukan dengan status `"baru"` **tidak** digunakan pelatihan. Hanya baris
+> yang telah direview dan disetujui baru masuk, sehingga pelabelan spam atau
+> salah tidak dapat meracuni model secara otomatis.
 
 > Always evaluate on samples the model has never seen. Re-testing on feedback rows only proves memorization.
 

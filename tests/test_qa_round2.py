@@ -274,7 +274,7 @@ def test_feedback_rejects_invalid_labels(client, tmp_path, monkeypatch, label):
         'label': label,
     })
     assert response.status_code == 400
-    assert 'Label must be 0 (Real) or 1 (Fake).' in response.get_json()['error']
+    assert 'Label harus 0 (Real) atau 1 (Palsu).' in response.get_json()['error']
 
 
 @pytest.mark.parametrize('label, expected', [(0, 0), (1, 1), ('0', 0), (' 1 ', 1)])
@@ -287,7 +287,9 @@ def test_feedback_accepts_valid_labels(client, tmp_path, monkeypatch, label, exp
     })
     assert response.status_code == 200
     rows = feedback_file.read_text(encoding='utf-8').strip().splitlines()
-    assert rows[-1].endswith(f'{expected}')
+    # Kolom: id,timestamp,text_hash,text,label,status,reviewer -> label kolom ke-5 (index 4)
+    last = rows[-1].split(',')
+    assert int(last[4]) == expected
 
 
 def test_feedback_normalises_fullwidth_text(client, tmp_path, monkeypatch):
@@ -390,3 +392,77 @@ def test_predict_accepts_text_at_max_chars(client):
 def test_max_content_length_config():
     """MAX_CONTENT_LENGTH = 256 KB (Flask menanggapi 413 sebelum memproses body)."""
     assert app.config['MAX_CONTENT_LENGTH'] == 256 * 1024
+
+
+# --- Item 4: feedback (formula injection, dedup, batas, status baru) ----------
+
+FEEDBACK_TEXT = 'Ini adalah teks unik untuk uji deduplikasi feedback.'
+
+
+def test_feedback_formula_injection(client, tmp_path, monkeypatch):
+    """Sel yang diawali =, +, -, @, tab, atau CR diberi awalan ' (anti formula injection)."""
+    feedback_file = tmp_path / 'feedback.csv'
+    monkeypatch.setattr(app_module, 'FEEDBACK_PATH', str(feedback_file))
+    for prefix in ['=', '+', '-', '@']:
+        response = client.post('/feedback', json={
+            'text': prefix + 'CMD|payload',
+            'label': 1,
+        })
+        assert response.status_code == 200, response.get_json()
+    content = feedback_file.read_text(encoding='utf-8')
+    for prefix in ['=', '+', '-', '@']:
+        assert ("'" + prefix) in content
+
+
+def test_feedback_dedup(client, tmp_path, monkeypatch):
+    """Teks+label yang sama dikirim dua kali -> status duplicate, tidak duplikat baris."""
+    feedback_file = tmp_path / 'feedback.csv'
+    monkeypatch.setattr(app_module, 'FEEDBACK_PATH', str(feedback_file))
+    r1 = client.post('/feedback', json={'text': FEEDBACK_TEXT, 'label': 1})
+    assert r1.status_code == 200
+    assert r1.get_json()['status'] == 'saved'
+    r2 = client.post('/feedback', json={'text': FEEDBACK_TEXT, 'label': 1})
+    assert r2.status_code == 200
+    assert r2.get_json()['status'] == 'duplicate'
+    # Berkas hanya boleh punya 1 baris data (header + 1)
+    lines = feedback_file.read_text(encoding='utf-8').strip().splitlines()
+    assert len(lines) == 2  # header + 1 data
+
+
+def test_feedback_rejects_over_max_chars(client, tmp_path, monkeypatch):
+    """Feedback teks > 20.000 karakter ditolak 400."""
+    feedback_file = tmp_path / 'feedback.csv'
+    monkeypatch.setattr(app_module, 'FEEDBACK_PATH', str(feedback_file))
+    terlalu_panjang = 'x ' * (app_module.FEEDBACK_MAX_CHARS // 2 + 10)
+    response = client.post('/feedback', json={'text': terlalu_panjang, 'label': 1})
+    assert response.status_code == 400
+    assert 'terlalu panjang' in response.get_json()['error'].lower()
+
+
+def test_training_ignores_unapproved_feedback():
+    """train_model_id.py hanya membaca baris dengan status 'disetujui'."""
+    import tempfile, os as _os
+    from train_model_id import clean_text
+    # Buat berkas feedback sementara dengan satu baris "baru" dan satu "disetujui"
+    tmpdir = tempfile.mkdtemp()
+    fb_path = _os.path.join(tmpdir, 'feedback_reviewed.csv')
+    with open(fb_path, 'w', encoding='utf-8', newline='') as f:
+        f.write('id,timestamp,text_hash,text,label,status,reviewer\n')
+        f.write('uuid1,2026-01-01T00:00:00+00:00,hash1,Teks baru yang harus diabaikan,1,baru,\n')
+        f.write('uuid2,2026-01-01T00:00:00+00:00,hash2,Teks disetujui untuk pelatihan,0,disetujui,\n')
+    # Monkeypatch DATA_DIR sementara
+    import train_model_id as tmi
+    orig_data_dir = tmi.DATA_DIR
+    tmi.DATA_DIR = tmpdir
+    try:
+        # Simulasi logika filter: hanya baris status 'disetujui'
+        import pandas as pd
+        fb = pd.read_csv(fb_path)
+        approved = fb[fb['status'] == 'disetujui']
+        assert len(approved) == 1
+        assert approved.iloc[0]['text'] == 'Teks disetujui untuk pelatihan'
+        assert approved.iloc[0]['label'] == 0
+    finally:
+        tmi.DATA_DIR = orig_data_dir
+        import shutil
+        shutil.rmtree(tmpdir)

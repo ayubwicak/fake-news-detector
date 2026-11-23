@@ -2,9 +2,13 @@ import os
 import re
 import csv
 import json
+import hashlib
+import uuid
+import fcntl
 import joblib
 import unicodedata
 import numpy as np
+from datetime import datetime, timezone
 from urllib.parse import urlparse
 from flask import Flask, request, jsonify, render_template
 from flask_limiter import Limiter
@@ -47,6 +51,35 @@ if (app.config['RATELIMIT_STORAGE_URI'] == 'memory://' and _WORKERS > 1):
         f'({_WORKERS}) tidak sinkron. Gunakan 1 worker + thread, atau '
         'RATELIMIT_STORAGE_URI=redis://... untuk produksi multi-worker.'
     )
+
+# ---------------------------------------------------------------------------
+# Konfigurasi feedback
+# ---------------------------------------------------------------------------
+FEEDBACK_MAX_CHARS = int(os.environ.get('FEEDBACK_MAX_CHARS', '20000'))
+FEEDBACK_MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
+_FEEDBACK_FIELDS = ['id', 'timestamp', 'text_hash', 'text', 'label',
+                    'status', 'reviewer']
+_FORMULA_PREFIXES = ('=', '+', '-', '@', '\t', '\r')
+
+
+def _sanitize_feedback_cell(value: str) -> str:
+    """Hindari formula injection CSV: sel yang diawali karakter khusus
+    (=, +, -, @, tab, CR) diberi awalan tanda kutip tunggal."""
+    if isinstance(value, str) and value and value[0] in _FORMULA_PREFIXES:
+        return "'" + value
+    return value
+
+
+def _count_feedback() -> int:
+    """Hitung jumlah baris feedback (tidak termasuk header)."""
+    if not os.path.exists(FEEDBACK_PATH):
+        return 0
+    try:
+        with open(FEEDBACK_PATH, 'r', encoding='utf-8') as f:
+            return max(sum(1 for _ in f) - 1, 0)
+    except Exception:
+        return 0
+
 
 # ---------------------------------------------------------------------------
 # Batas input (antisipasi DoS / payload besar)
@@ -1024,43 +1057,87 @@ def predict():
 @app.route('/feedback', methods=['POST'])
 @limiter.limit(current_rate_limit)
 def feedback():
-    """Record human-verified labels for continuous retraining."""
+    """Catat label manusia untuk pelatihan berkelanjutan (status "baru").
+
+    Format berkas: id, timestamp, text_hash, text, label, status, reviewer.
+    Semua masukan baru diberi status "baru" dan hanya baris dengan status
+    "disetujui" yang dibaca oleh pipeline pelatihan.
+    """
     data = request.get_json(silent=True)
     if not data or 'text' not in data or 'label' not in data:
-        return jsonify({'error': 'Parameters "text" and "label" are required.'}), 400
+        return jsonify({'error': 'Parameter "text" dan "label" wajib diisi.'}), 400
 
     label = parse_feedback_label(data['label'])
     if label is None:
-        return jsonify({'error': 'Label must be 0 (Real) or 1 (Fake).'}), 400
+        return jsonify({'error': 'Label harus 0 (Real) atau 1 (Palsu).'}), 400
 
     text = str(data['text']).strip()
     text = unicodedata.normalize('NFKC', text)
 
     if len(text) < 10:
-        return jsonify({'error': 'Feedback text is too short (minimum 10 characters).'}), 400
+        return jsonify({'error': 'Teks terlalu pendek. Minimal 10 karakter.'}), 400
+
+    if len(text) > FEEDBACK_MAX_CHARS:
+        return jsonify({
+            'error': f'Teks terlalu panjang. Maksimal {FEEDBACK_MAX_CHARS:,} karakter.'
+        }), 400
+
+    text_hash = hashlib.sha256((text + str(label)).encode('utf-8')).hexdigest()
 
     os.makedirs(DATA_DIR, exist_ok=True)
-    file_exists = os.path.exists(FEEDBACK_PATH)
 
+    # --- Deduplikasi berdasarkan hash teks+label ---------------------------
+    if os.path.exists(FEEDBACK_PATH):
+        try:
+            with open(FEEDBACK_PATH, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    if row.get('text_hash') == text_hash:
+                        return jsonify({
+                            'status': 'duplicate',
+                            'message': 'Feedback duplikat telah dicatat sebelumnya.',
+                            'total_feedback_samples': _count_feedback(),
+                        }), 200
+        except Exception:
+            # Berkas rusak: lanjutkan tanpa dedup (baris baru tetap ditambahkan)
+            pass
+
+    # --- Batas ukuran berkas ----------------------------------------------
+    if os.path.exists(FEEDBACK_PATH) and os.path.getsize(FEEDBACK_PATH) >= FEEDBACK_MAX_FILE_SIZE:
+        return jsonify({
+            'error': 'Berkas feedback penuh (maksimal 5 MB). Hubungi administrator.'
+        }), 503
+
+    # --- Tulis dengan file lock + append atomik ---------------------------
+    need_header = not (os.path.exists(FEEDBACK_PATH)
+                       and os.path.getsize(FEEDBACK_PATH) > 0)
     try:
         with open(FEEDBACK_PATH, 'a', newline='', encoding='utf-8') as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(['text', 'label'])
-            writer.writerow([text, label])
-    except Exception as e:
-        return jsonify({'error': f'Could not save feedback: {e}'}), 500
-
-    try:
-        with open(FEEDBACK_PATH, 'r', encoding='utf-8') as f:
-            total = max(sum(1 for _ in f) - 1, 0)
+            fcntl.flock(f, fcntl.LOCK_EX)
+            try:
+                writer = csv.DictWriter(f, fieldnames=_FEEDBACK_FIELDS)
+                if need_header:
+                    writer.writeheader()
+                writer.writerow({
+                    'id': str(uuid.uuid4()),
+                    'timestamp': datetime.now(timezone.utc).isoformat(),
+                    'text_hash': text_hash,
+                    'text': _sanitize_feedback_cell(text),
+                    'label': label,
+                    'status': 'baru',
+                    'reviewer': '',
+                })
+            finally:
+                fcntl.flock(f, fcntl.LOCK_UN)
     except Exception:
-        total = 1
+        # Jangan bocorkan detail exception ke klien
+        return jsonify({'error': 'Gagal menyimpan feedback.'}), 500
 
     return jsonify({
         'status': 'saved',
-        'message': 'Feedback recorded. Run "python train_model.py" to retrain and improve the model.',
-        'total_feedback_samples': total
+        'message': ('Feedback dicatat dengan status "baru". '
+                    'Akan diverifikasi sebelum digunakan pelatihan.'),
+        'total_feedback_samples': _count_feedback(),
     })
 
 
