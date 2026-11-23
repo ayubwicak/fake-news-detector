@@ -9,7 +9,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, BASE_DIR)
 
 import app as app_module
-from app import app
+from app import app, build_advice
 from id_preprocessing import clean_text as id_clean_text, detect_language
 
 
@@ -495,3 +495,68 @@ def test_url_scheme_filter_unit():
                 if urlparse(m.get('url', '')).scheme in ('http', 'https')]
     assert len(filtered) == 2
     assert {m['judul'] for m in filtered} == {'a', 'b'}
+
+
+# --- Item 7: build_advice matriks status x jumlah red_flag ---------------------
+
+
+@pytest.mark.parametrize(
+    'status, red_flag_count, expected_judul_fragment',
+    [
+        # belum_dapat_disimpulkan: 0 / 1-2 / >=3 red_flag
+        ('belum_dapat_disimpulkan', 0, 'Belum dapat disimpulkan'),
+        ('belum_dapat_disimpulkan', 1, 'ada indikasi mencurigakan'),
+        ('belum_dapat_disimpulkan', 2, 'ada indikasi mencurigakan'),
+        ('belum_dapat_disimpulkan', 3, 'patut diwaspadai'),
+        ('belum_dapat_disimpulkan', 5, 'patut diwaspadai'),
+        # cenderung_valid: 0 / 1-2 / >=3 red_flag
+        ('cenderung_valid', 0, 'Cenderung valid'),
+        ('cenderung_valid', 2, 'Cenderung valid'),
+        ('cenderung_valid', 3, 'Cenderung valid'),
+        # cenderung_hoaks: tidak berubah untuk semua tier red_flag
+        ('cenderung_hoaks', 0, 'Cenderung hoaks'),
+        ('cenderung_hoaks', 2, 'Cenderung hoaks'),
+        ('cenderung_hoaks', 5, 'Cenderung hoaks'),
+    ],
+)
+def test_build_advice_matriks_status_red_flag(status, red_flag_count,
+                                              expected_judul_fragment):
+    """Setiap kombinasi status x tier red_flag menghasilkan konsisten.
+
+    - belum_dapat_disimpulkan + 0 -> judul netral
+    - belum_dapat_disimpulkan + 1-2 -> indikasi mencurigakan
+    - belum_dapat_disimpulkan + >=3 -> patut diwaspadai (tegas)
+    - cenderung_valid + >=3 -> tetap 'Cenderung valid' (ringkasan ditambah)
+    - cenderung_hoaks -> tidak berubah meski red_flag tinggi
+    """
+    advice = build_advice(status, 50.0, 50.0, red_flag_count)
+    assert set(advice) == {'judul', 'ringkasan', 'saran'}
+    assert expected_judul_fragment in advice['judul']
+    assert advice['ringkasan']
+    assert advice['saran']
+    # Tidak ada kata absolut/jaminan (cocokkan kata utuh, bukan substring
+    # di dalam "pastikan").
+    import re as _re
+    combined = ' '.join(advice.values()).lower()
+    assert not _re.search(r'\bterbukti\b', combined)
+    assert not _re.search(r'\bpasti\b', combined)
+    assert '100%' not in combined
+
+
+def test_build_advice_belum_dapat_3_red_flag_tegas():
+    advice = build_advice('belum_dapat_disimpulkan', 55.0, 45.0, 3)
+    assert advice['judul'] == 'Belum dapat disimpulkan, tetapi patut diwaspadai'
+    assert 'Jangan dibagikan dulu' in advice['saran']
+
+
+def test_build_advice_cenderung_valid_tambah_ringkasan_saat_3_red_flag():
+    advice = build_advice('cenderung_valid', 60.0, 40.0, 3)
+    assert 'ada beberapa ciri' in advice['ringkasan']
+    advice2 = build_advice('cenderung_valid', 60.0, 40.0, 2)
+    assert 'ada beberapa ciri' not in advice2['ringkasan']
+
+
+def test_build_advice_cenderung_hoaks_tidak_berubah():
+    advice = build_advice('cenderung_hoaks', 80.0, 20.0, 5)
+    assert advice['judul'] == 'Cenderung hoaks'
+    assert 'Jangan dibagikan dulu' in advice['saran']

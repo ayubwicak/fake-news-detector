@@ -417,19 +417,57 @@ def build_advice(status: str, probability_real: float,
     checks (no model involvement) and only influence the advice text, not
     the model status or badge colour.
     """
-    # --- Saran khusus untuk status abu-abu ---
-    if status == 'belum_dapat_disimpulkan' and red_flag_count == 0 and credibility_count == 0:
-        saran = (
-            'Tidak ditemukan ciri pesan berantai atau penipuan, tetapi model '
-            'belum yakin. Cocokkan dengan media tepercaya sebelum mempercayai '
-            'atau membagikannya.'
+    # --- Saran khusus untuk status abu-abu: belum dapat disimpulkan ---
+    # Matriks: status × jumlah red_flag (0, 1-2, >=3).
+    if status == 'belum_dapat_disimpulkan':
+        ringkasan = (
+            f'Kemungkinan valid {probability_real:.1f}%, '
+            f'kemungkinan hoaks {probability_fake:.1f}%.'
         )
-    elif status == 'belum_dapat_disimpulkan' and red_flag_count >= 1:
-        # Jika ada 1-2 red flag tetap pakai teks lama di bawah (kecuali kalau cuma credibility)
-        # Lakukan pengecekan lanjut di sini
-        pass
+        if red_flag_count == 0 and credibility_count == 0:
+            return {
+                'judul': 'Belum dapat disimpulkan',
+                'ringkasan': ringkasan,
+                'saran': (
+                    'Tidak ditemukan ciri pesan berantai atau penipuan, tetapi '
+                    'model belum yakin. Cocokkan dengan media tepercaya sebelum '
+                    'mempercayai atau membagikannya.'
+                ),
+            }
+        if red_flag_count >= 3:
+            return {
+                'judul': 'Belum dapat disimpulkan, tetapi patut diwaspadai',
+                'ringkasan': ringkasan,
+                'saran': (
+                    'Jangan dibagikan dulu. Teks ini memiliki beberapa ciri yang '
+                    'sering muncul dalam hoaks dan penipuan. Pastikan '
+                    'kebenarannya lewat situs resmi atau media tepercaya sebelum '
+                    'mempercayai atau membagikannya.'
+                ),
+            }
+        # 1-2 red flag: indikasi mencurigakan, tapi belum cukup bukti.
+        if 1 <= red_flag_count <= 2:
+            return {
+                'judul': 'Belum dapat disimpulkan, ada indikasi mencurigakan',
+                'ringkasan': ringkasan,
+                'saran': (
+                    'Tidak tersedia cukup bukti untuk menyimpulkan, tetapi ditemukan '
+                    'ciri mencurigakan. Verifikasi ke media tepercaya sebelum '
+                    'membagikannya.'
+                ),
+            }
+        # red_flag_count == 0 (dengan credibility saja): saran netral.
+        return {
+            'judul': 'Belum dapat disimpulkan',
+            'ringkasan': ringkasan,
+            'saran': (
+                'Tidak ditemukan ciri pesan berantai atau penipuan, tetapi '
+                'model belum yakin. Cocokkan dengan media tepercaya sebelum '
+                'mempercayai atau membagikannya.'
+            ),
+        }
 
-    # --- Standar standar ---
+    # --- Standar ---
     if status == 'cenderung_hoaks':
         return {
             'judul': 'Cenderung hoaks',
@@ -462,7 +500,8 @@ def build_advice(status: str, probability_real: float,
             ),
         }
 
-    advice = {
+    # Fallback untuk status yang tidak diketahui.
+    return {
         'judul': 'Belum dapat disimpulkan',
         'ringkasan': (
             f'Kemungkinan valid {probability_real:.1f}%, '
@@ -474,14 +513,6 @@ def build_advice(status: str, probability_real: float,
             'membagikannya.'
         ),
     }
-    if red_flag_count >= 3:
-        advice['judul'] = 'Belum dapat disimpulkan, tetapi patut diwaspadai'
-        advice['saran'] = (
-            'Jangan dibagikan dulu. Pesan dengan ciri seperti ini sering '
-            'dipakai dalam hoaks dan penipuan. Pastikan kebenarannya lewat '
-            'situs resmi atau media tepercaya.'
-        )
-    return advice
 
 
 # ---------------------------------------------------------------------------
