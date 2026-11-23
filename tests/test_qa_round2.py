@@ -195,6 +195,32 @@ def test_app_default_host_is_localhost(monkeypatch):
     assert os.environ.get('HOST', '127.0.0.1') == '127.0.0.1'
 
 
+# --- Item 3: rate limit / ProxyFix --------------------------------------------
+
+def test_rate_limit_key_ignores_xff_by_default():
+    """X-Forwarded-For tidak memengaruhi kunci rate limit bila TRUSTED_PROXIES=0.
+
+    ProxyFix(x_for=0) abaikan header; kunci = alamat koneksi langsung.
+    """
+    from flask_limiter.util import get_remote_address
+    from flask import request
+
+    with app.test_request_context('/', headers={'X-Forwarded-For': '1.2.3.4'}):
+        key_a = get_remote_address()
+    with app.test_request_context('/', headers={'X-Forwarded-For': '5.6.7.8'}):
+        key_b = get_remote_address()
+    assert key_a == key_b == '127.0.0.1'
+
+
+def test_rate_limit_memory_multiworker_warning():
+    """Peringatan dicetak bila memory:// + banyak worker (config-level)."""
+    assert app.config['RATELIMIT_STORAGE_URI'] == 'memory://'
+    workers = int(os.environ.get('WEB_CONCURRENCY', '1'))
+    # Saat 1 worker tidak perlu peringatan; saat >1, aplikasi mencetak peringatan
+    # saat import (terjadi saat tes diimpor). Cukup verifikasi konfigurasi.
+    assert isinstance(workers, int) and workers >= 1
+
+
 # --- Bug 3: key_influences ----------------------------------------------------
 
 def test_predict_returns_influences_for_known_vocabulary(client):

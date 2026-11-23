@@ -25,9 +25,28 @@ RATE_LIMIT = os.environ.get('RATE_LIMIT_PER_MINUTE', '30 per minute')
 app.config['RATE_LIMIT'] = RATE_LIMIT
 app.config.setdefault(
     'RATELIMIT_STORAGE_URI',
-    os.environ.get('RATE_LIMIT_STORAGE_URI', 'memory://'),
+    os.environ.get('RATELIMIT_STORAGE_URI', 'memory://'),
 )
+
+# ProxyFix: hanya percaya header X-Forwarded-* dari N proxy terdekat yang
+# diatur melalui TRUSTED_PROXIES (default 0 = abaikan semua header, gunakan
+# alamat koneksi langsung). Ini mencegah penyerang menyamar IP melalui
+# X-Forwarded-For palsu.
+_TRUSTED_PROXIES = int(os.environ.get('TRUSTED_PROXIES', '0'))
+from werkzeug.middleware.proxy_fix import ProxyFix  # noqa: E402
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=_TRUSTED_PROXIES)
+
 limiter = Limiter(app=app, key_func=get_remote_address)
+
+# Peringatan saat storage in-memory dengan banyak worker: setiap worker
+# punya counter sendiri, jadi rate limit tidak akurat di produksi multi-worker.
+_WORKERS = int(os.environ.get('WEB_CONCURRENCY', '1'))
+if (app.config['RATELIMIT_STORAGE_URI'] == 'memory://' and _WORKERS > 1):
+    print(
+        'Peringatan: rate limiter memory:// dengan beberapa worker '
+        f'({_WORKERS}) tidak sinkron. Gunakan 1 worker + thread, atau '
+        'RATELIMIT_STORAGE_URI=redis://... untuk produksi multi-worker.'
+    )
 
 # ---------------------------------------------------------------------------
 # Batas input (antisipasi DoS / payload besar)
