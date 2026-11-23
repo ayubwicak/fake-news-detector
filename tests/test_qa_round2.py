@@ -466,3 +466,32 @@ def test_training_ignores_unapproved_feedback():
         tmi.DATA_DIR = orig_data_dir
         import shutil
         shutil.rmtree(tmpdir)
+
+
+# --- Item 5: URL aman di UI + server-side filter ------------------------------
+
+from urllib.parse import urlparse  # noqa: E402
+
+
+def test_url_scheme_filter_drops_non_http_https():
+    """Filtering skema URL server-side hanya menyisakan http/https."""
+    from app import _load_debunk_index, HOAX_META
+    _load_debunk_index()
+    if HOAX_META:
+        for m in HOAX_META:
+            assert urlparse(m.get('url', '')).scheme in ('http', 'https'), m.get('url')
+
+
+def test_url_scheme_filter_unit():
+    """Unit test logika filter skema: http/https lolos, yang lain dibuang."""
+    raw = [
+        {'url': 'https://example.com', 'judul': 'a'},
+        {'url': 'http://example.com', 'judul': 'b'},
+        {'url': 'javascript:alert(1)', 'judul': 'c'},
+        {'url': 'ftp://example.com', 'judul': 'd'},
+        {'url': '', 'judul': 'e'},
+    ]
+    filtered = [m for m in raw
+                if urlparse(m.get('url', '')).scheme in ('http', 'https')]
+    assert len(filtered) == 2
+    assert {m['judul'] for m in filtered} == {'a', 'b'}

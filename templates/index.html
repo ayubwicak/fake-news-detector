@@ -1121,7 +1121,32 @@
                     const simLabel = simVal >= 0.80 ? 'Sangat mirip' : 'Agak mirip, periksa tautannya';
                     const sim = makeEl('div', 'debunk-sim', simLabel + ' — kemiripan ' + (simVal * 100).toFixed(0) + '%');
                     const link = makeEl('a', 'debunk-link', 'Lihat klarifikasi sumber');
-                    link.href = item.url || '#';
+                    let linkTarget = '#';
+                    let isLink = false;
+                    try {
+                        const u = new URL(item.url || '');
+                        if (u.protocol === 'http:' || u.protocol === 'https:') {
+                            linkTarget = u.href;
+                            isLink = true;
+                        }
+                    } catch (e) {
+                        // URL tidak valid / skema tidak diizinkan: tidak jadi tautan
+                    }
+                    if (isLink) {
+                        link.href = linkTarget;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                    } else {
+                        // Tampilkan sebagai teks biasa (bukan tautan) bila URL tidak aman
+                        const plain = makeEl('span', 'debunk-link', 'Lihat klarifikasi sumber');
+                        card.appendChild(title);
+                        card.appendChild(sim);
+                        card.appendChild(plain);
+                        card.appendChild(makeEl('div', 'debunk-meta', 'Sumber tidak tersedia (URL tidak valid).'));
+                        debunkSection.appendChild(card);
+                        return;
+                    }
+                    link.rel = 'noopener noreferrer';
                     link.target = '_blank';
                     link.rel = 'noopener noreferrer';
                     card.appendChild(title);

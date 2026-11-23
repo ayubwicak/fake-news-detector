@@ -640,7 +640,14 @@ def _load_debunk_index():
     try:
         if os.path.exists(index_path) and os.path.exists(meta_path):
             HOAX_INDEX = np.load(index_path).astype(np.float32)
-            HOAX_META = json.load(open(meta_path, encoding="utf-8"))
+            raw_meta = json.load(open(meta_path, encoding="utf-8"))
+            # Validasi skema URL sisi server: hanya terima http/https;
+            # buang entri dengan skema lain (mis. javascript:) sebagai
+            # pertahanan dalam bertingkat terhadap XSS melalui href.
+            HOAX_META = [
+                m for m in raw_meta
+                if urlparse(m.get('url', '')).scheme in ('http', 'https')
+            ]
             # Ambang dari hasil validasi hold-out v2, bila tersedia.
             thr_path = os.path.join(LOGS_DIR, "debunk_threshold.json")
             if os.path.exists(thr_path):
@@ -650,7 +657,7 @@ def _load_debunk_index():
                     DEBUNK_THRESHOLD = float(thr_data.get("chosen_threshold", DEBUNK_THRESHOLD))
                 except Exception:
                     pass
-            print(f"Debunk index dimuat: {len(HOAX_META)} entri, ambang={DEBUNK_THRESHOLD}")
+            print(f"Debunk index dimuat: {len(HOAX_META)} entri (dari {len(raw_meta)} mentah), ambang={DEBUNK_THRESHOLD}")
             DEBUNK_AVAILABLE = True
     except Exception as e:
         print(f"Warning: Tidak dapat memuat indeks debunked: {e}")
