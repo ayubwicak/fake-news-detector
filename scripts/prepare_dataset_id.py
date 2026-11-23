@@ -29,6 +29,11 @@ data/holdout_id_v2.csv     independent manual hold-out (>=100 rows, balanced)
 logs/dataset_id_audit.json audit of labels, leakage signals, duplicates
 logs/source_x_label.json   source x label matrix
 
+Split policy (see docs/DATA_SOURCES.md): the default OOS split groups by
+`source` with GroupKFold, so no source appears in both train and test. The
+`--random-split` flag is a warned, explicit opt-out for smoke tests only —
+it can leak source style into test and must not be used for reported metrics.
+
 Label convention: 0 = Valid/Real, 1 = Hoax/Fake.
 """
 
@@ -431,6 +436,67 @@ def split_by_source(rows: list[dict]) -> tuple[list[dict], list[dict]]:
     return train_rows, test_rows
 
 
+def group_kfold_split(rows: list[dict], test_size: float = 0.20,
+                      random_split: bool = False,
+                      random_state: int = RANDOM_STATE) -> tuple[list[dict], list[dict], dict]:
+    """Split default: GROUP BY SOURCE memakai GroupKFold (deterministik).
+
+    Tidak ada sumber yang muncul di train dan test sekaligus. Mode acak hanya
+    lewat ``--random-split`` dan diberi peringatan karena berisiko kebocoran
+    gaya sumber. Mengembalikan (train, test, info).
+    """
+    import random as _random
+
+    if not 0.0 < test_size < 1.0:
+        raise ValueError("test_size harus di antara 0 dan 1")
+    if random_split:
+        print("PERINGATAN: --random-split dipakai. Sumber yang sama bisa muncul di "
+              "train DAN test (kebocoran gaya sumber). Gunakan hanya untuk smoke test.")
+        work = list(rows)
+        _random.Random(random_state).shuffle(work)
+        cut = max(1, min(len(work) - 1, int(round(len(work) * test_size))))
+        return work[cut:], work[:cut], {
+            "method": "random", "warning": "source leakage possible",
+            "test_share": cut / len(work) if work else 0.0,
+            "groups_train": sorted({str(r.get("source", "")) for r in work[cut:]}),
+            "groups_test": sorted({str(r.get("source", "")) for r in work[:cut]}),
+        }
+
+    from sklearn.model_selection import GroupKFold
+
+    if any("source" not in row for row in rows):
+        raise ValueError("Kolom 'source' wajib ada untuk split GROUP BY SOURCE; "
+                         "gunakan --random-split hanya untuk smoke test.")
+    groups = [str(row.get("source", "")) for row in rows]
+    if len(set(groups)) < 2:
+        raise ValueError("Minimal dua sumber berbeda dibutuhkan untuk split by-source; "
+                         "gunakan --random-split hanya untuk smoke test.")
+    n_splits = max(2, int(round(1.0 / test_size)))
+    gkf = GroupKFold(n_splits=min(n_splits, len(set(groups))))
+    target = test_size
+    best = None
+    for train_idx, test_idx in gkf.split(rows, groups=groups):
+        share = len(test_idx) / len(rows)
+        score = abs(share - target)
+        if best is None or score < best[0]:
+            best = (score, train_idx, test_idx)
+    _, train_idx, test_idx = best
+    train_rows = [rows[i] for i in train_idx]
+    test_rows = [rows[i] for i in test_idx]
+    info = {
+        "method": "GroupKFold",
+        "n_splits": gkf.get_n_splits(),
+        "test_share": len(test_rows) / len(rows),
+        "groups_train": sorted({groups[i] for i in train_idx}),
+        "groups_test": sorted({groups[i] for i in test_idx}),
+        "n_train": len(train_rows),
+        "n_test": len(test_rows),
+    }
+    print(f"\n[GroupKFold split] train={len(train_rows)} | test={len(test_rows)} "
+          f"| sumber test={info['groups_test']}")
+    return train_rows, test_rows, info
+
+
 # ---------------------------------------------------------------------------
 # Manual hold-out set
 # ---------------------------------------------------------------------------
@@ -611,7 +677,18 @@ def create_holdout() -> list[dict]:
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
+    import argparse
+
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--random-split", action="store_true",
+        help="Gunakan split acak (PERINGATAN: sumber bisa bocor ke test)")
+    parser.add_argument(
+        "--test-size", type=float, default=0.20,
+        help="Proporsi test untuk GroupKFold / split acak (default: 0.20)")
+    args = parser.parse_args(argv)
+
     os.makedirs(DATA_DIR, exist_ok=True)
     os.makedirs(RAW_DIR, exist_ok=True)
     os.makedirs(LOGS_DIR, exist_ok=True)
@@ -651,8 +728,11 @@ def main() -> None:
     df.to_csv(train_path, index=False, encoding="utf-8")
     print(f"\nSaved: {train_path} ({len(df):,} rows)")
 
-    # 6. Split by source for out-of-source testing
-    train_rows, test_rows = split_by_source(cleaned)
+    # 6. Split by source for out-of-source testing.
+    # Default: GroupKFold group by source -> no source appears in both train and test.
+    # --random-split is a warned, explicit opt-out for smoke tests only.
+    train_rows, test_rows, split_info = group_kfold_split(
+        cleaned, test_size=args.test_size, random_split=args.random_split)
     train_df = pd.DataFrame(train_rows)
     test_df = pd.DataFrame(test_rows)
     train_path_oos = os.path.join(DATA_DIR, "train_id_oos.csv")
@@ -723,6 +803,7 @@ def main() -> None:
         ],
         "label_mapping": {"Valid": 0, "Hoax": 1},
         "random_state": RANDOM_STATE,
+        "split_info": split_info,
     }
     audit_path = os.path.join(LOGS_DIR, "dataset_id_audit.json")
     with open(audit_path, "w", encoding="utf-8") as handle:
