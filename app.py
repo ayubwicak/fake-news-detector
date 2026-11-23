@@ -23,6 +23,15 @@ FEEDBACK_PATH = os.path.join(DATA_DIR, 'feedback.csv')
 
 app = Flask(__name__)
 
+# SECRET_KEY hanya dari env (untuk sesi/CSRF bila diaktifkan di masa depan).
+# Tidak ada default aman yang dikodekan ke dalam repositori.
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', '')
+
+# Fitur feedback dapat dimatikan melalui env (contoh: lingkungan publik
+# yang tidak ingin menyimpan masukan pengguna).
+FEEDBACK_ENABLED = os.environ.get('FEEDBACK_ENABLED', 'true').lower() in (
+    '1', 'true', 'yes', 'on')
+
 # Rate limiting: 30 requests/minute/IP by default, overridable via env var.
 # A callable limit value allows tests to lower the limit without re-importing.
 RATE_LIMIT = os.environ.get('RATE_LIMIT_PER_MINUTE', '30 per minute')
@@ -957,6 +966,51 @@ def explain_prediction(cleaned_text: str, top_n: int = 5, weights: dict | None =
     return matched_features[:top_n]
 
 
+# ---------------------------------------------------------------------------
+# Security headers (S06): diterapkan pada semua respons.
+# ---------------------------------------------------------------------------
+_CSP = (
+    "default-src 'self'; "
+    # Inline JS/CSS diperlukan oleh template (diperbaiki ke nonce di versi mendatang).
+    "script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ "
+    "https://www.gstatic.com/recaptcha/; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+    "font-src 'self' https://fonts.gstatic.com; "
+    "img-src 'self' data:; "
+    "connect-src 'self'; "
+    "frame-src 'self' https://www.google.com/recaptcha/ "
+    "https://www.gstatic.com/recaptcha/; "
+    "object-src 'none'; "
+    "base-uri 'self';"
+)
+
+
+@app.after_request
+def _set_security_headers(response):
+    """Setel header keamanan pada setiap respons HTTP.
+
+    - Content-Security-Policy: membatasi sumber skrip/gaya/font. Inline
+      script/diizinkan hanya melalui nonce atau hash; Google Fonts diizinkan
+      karena templates/index.html memakainya.
+    - X-Content-Type-Options: nosniff mencegah MIME sniffing.
+    - X-Frame-Options: DENY mencegah clickjacking via iframe.
+    - Referrer-Policy: no-referrer tidak mengirim URL halaman ke situs luar.
+    - Permissions-Policy: minimal, nonaktifkan fitur browser yang tidak perlu.
+    """
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'DENY'
+    response.headers['Referrer-Policy'] = 'no-referrer'
+    response.headers['Permissions-Policy'] = (
+        'geolocation=(), microphone=(), camera=(), '
+        'payment=(), usb=(), magnetometer=()'
+    )
+    # CSP hanya untuk respons HTML (jangan setel pada JSON API yang tidak
+    # perlu membebankan browser dengan kebijakan konten).
+    if 'text/html' in response.headers.get('Content-Type', ''):
+        response.headers['Content-Security-Policy'] = _CSP
+    return response
+
+
 @app.route('/')
 def home():
     return render_template('index.html', metrics=eval_metrics, model_reliable=MODEL_RELIABLE)
@@ -1194,6 +1248,11 @@ def feedback():
     Semua masukan baru diberi status "baru" dan hanya baris dengan status
     "disetujui" yang dibaca oleh pipeline pelatihan.
     """
+    if not FEEDBACK_ENABLED:
+        return jsonify({
+            'error': 'Fitur feedback saat ini dinonaktifkan oleh administrator.'
+        }), 503
+
     data = request.get_json(silent=True)
     if not data or 'text' not in data or 'label' not in data:
         return jsonify({'error': 'Parameter "text" dan "label" wajib diisi.'}), 400

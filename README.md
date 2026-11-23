@@ -203,6 +203,51 @@ Maintainer dapat mem-publish artefak model sebagai GitHub Release dengan berkas 
 
 ---
 
+## 🔒 Keamanan & Privasi
+
+### Header keamanan (S06)
+
+Setiap respons HTTP disertai header:
+- **Content-Security-Policy** — membatasi sumber skrip, gaya, dan font. Inline
+  script hanya diizinkan melalui nonce/hash; Google Fonts (`fonts.googleapis.com`,
+  `fonts.gstatic.com`) diizinkan karena digunakan oleh UI.
+- **X-Content-Type-Options: nosniff** — mencegah MIME sniffing.
+- **X-Frame-Options: DENY** — mencegah clickjacking melalui iframe.
+- **Referrer-Policy: no-referrer** — tidak mengirim URL halaman ke situs luar.
+- **Permissions-Policy** — nonaktifkan geolocation, microphone, camera,
+  payment, usb, magnetometer.
+
+### SECRET_KEY & CORS (S07)
+
+- `SECRET_KEY` hanya diambil dari variabel lingkungan (`os.environ.get('SECRET_KEY')`),
+  tidak ada default yang dikodekan ke repositori. Gunakan untuk sesi/CSRF di
+  masa depan.
+- **CORS tidak diaktifkan secara default.** Tidak ada `flask-cors` terpasang
+  dan tidak ada header `Access-Control-Allow-Origin` yang disetel. Bila
+  diperlukan, tambahkan secara eksplisit di deployment.
+
+### Privasi masukan & retensi (PR01)
+
+Peringatan singkat ditampilkan di UI dekat kotak masukan:
+
+> "Jika Anda mengirim masukan, teks akan disimpan untuk perbaikan sistem.
+>  Jangan kirim data pribadi."
+
+Data yang disimpan:
+- Masukan feedback disimpan ke `data/feedback.csv` (git-ignored) dengan
+  status `"baru"`, kemudian direview dan dipindahkan ke
+  `data/feedback_reviewed.csv` hanya bila disetujui reviewer.
+- Tidak ada data pribadi (nama, email, alamat IP, dll.) yang sengaja
+  dikumpulkan. Alamat IP hanya digunakan untuk rate limiting (tidak
+  disimpan berkelanjutan).
+
+Cara menghapus data:
+- Hapus `data/feedback.csv` dan `data/feedback_reviewed.csv` untuk
+  membuang semua masukan pengguna.
+- Matikan fitur feedback sepenuhnya dengan `FEEDBACK_ENABLED=false`.
+
+---
+
 ## 🔬 Methodology (Why the Numbers Are Trustworthy)
 
 The previous pipeline had two classic mistakes. Both are fixed:

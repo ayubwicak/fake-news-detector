@@ -25,6 +25,9 @@ models/indobert/
 .cache/
 **/.cache/
 
+.coverage
+htmlcov/
+
 # Catatan: menghapus dari pelacakan (git rm --cached) TIDAK menghapus riwayat
 # git. File besar yang sudah ter-push (rifky_indonesian_hoax.parquet,
 # train_id_oos.csv, models/id/*.pkl) masih ada di riwayat origin. Hapus dari

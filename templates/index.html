@@ -305,6 +305,24 @@
             font-weight: 600;
         }
 
+        .privacy-notice {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.68rem;
+            color: var(--text-secondary);
+            margin-top: 0.625rem;
+            padding: 0.5rem 0.75rem;
+            background: rgba(128, 128, 128, 0.08);
+            border-radius: 6px;
+            line-height: 1.4;
+        }
+
+        .privacy-icon {
+            flex-shrink: 0;
+            color: var(--accent, #2e7d32);
+        }
+
         .actions {
             display: flex;
             flex-wrap: wrap;
@@ -825,6 +843,11 @@
                 <textarea id="news-text" placeholder="Tempel teks berita atau pernyataan di sini..." autocomplete="off" spellcheck="false" data-max-char="20000" maxlength="20000"></textarea>
 
                 <div class="char-count" id="char-count">0 karakter</div>
+
+                <div class="privacy-notice">
+                    <span class="privacy-icon" aria-hidden="true">ℹ</span>
+                    <span class="privacy-text">Jika Anda mengirim masukan, teks akan disimpan untuk perbaikan sistem. Jangan kirim data pribadi.</span>
+                </div>
 
                 <div class="actions">
                     <button type="button" class="btn-ghost" id="btn-hapus">
