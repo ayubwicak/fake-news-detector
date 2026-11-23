@@ -165,13 +165,17 @@ Unduhan tambahan sekitar 300–900 MB (torch CPU ~200 MB, sentence-transformers 
 
 ## 📦 Obtaining Model Artefacts (Official Path)
 
-Artefak model (`*.pkl`, `*.npy`, `hoax_index_meta.json`) **tidak disimpan di repositori** (dicantumkan di `.gitignore`) karena berukuran besar. Setelah clone bersih, model belum siap dan `/predict` menjawab:
+Artefak model (`*.pkl`, `*.npy`, `hoax_index_meta.json`) **tidak disimpan di repositori** (dicantumkan di `.gitignore`) karena berukuran besar. Setelah clone bersih, model belum siap dan `/predict` menjawab **HTTP 503** (bukan 500 — ini kondisi "layanan belum siap", bukan error server):
 
-```
-{"error":"Model belum siap. Jalankan train_model.py terlebih dahulu."}
+```json
+{
+  "error": "Model belum siap. Jalankan train_model.py (Inggris) atau train_model_id.py (Indonesia), lalu restart server. Lihat README.md bagian \"Cara menjalankan dari nol\".",
+  "models_missing": ["en", "id"],
+  "recovery": {"en": "python train_model.py", "id": "python train_model_id.py", "after": "Restart server, lalu cek GET /health."}
+}
 ```
 
-`/health` tetap menampilkan `status: "healthy"` dengan `model_loaded: false` dan detail per-model (English / Indonesian) yang tidak tersedia — tidak crash dan tidak diam-diam salah bahasa.
+`/health` tetap menampilkan `status: "healthy"` dengan `model_loaded: false`, `models_missing`, `model_recovery`, `model_reliability`, status `indobert.checksums_ok`, dan detail per-model — tidak crash dan tidak diam-diam salah bahasa. UI menampilkan pesan pemulihan dari server (bukan pesan generik "server bermasalah").
 
 ### Jalur resmi: siapkan data → latih → verifikasi checksum
 
@@ -194,6 +198,8 @@ python train_model.py
 cd models
 sha256sum -c CHECKSUMS.txt
 ```
+
+Catatan: `prepare_dataset_id.py` kini memakai **GroupKFold by-source** sebagai default (tidak ada sumber yang muncul di train dan test sekaligus). Flag `--random-split` hanya untuk smoke test dan akan mencetak peringatan kebocoran sumber — jangan dipakai untuk metrik. Detail: `docs/DATA_SOURCES.md`.
 
 Setiap artefak yang ada di disk akan diverifikasi SHA-256 terhadap `models/CHECKSUMS.txt` saat aplikasi start. Artefak yang hash-nya tidak cocok akan dilewati (tidak dimuat), dan aplikasi tetap berjalan dengan artefak yang tersedia. Lewati seluruh verifikasi dengan `SKIP_CHECKSUM=1`.
 
