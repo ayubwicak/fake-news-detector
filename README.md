@@ -163,6 +163,44 @@ docker run -p 5000:5000 fake-news-detector-ml
 
 Unduhan tambahan sekitar 300–900 MB (torch CPU ~200 MB, sentence-transformers ~100 MB, model embeddings ~100 MB). App tetap berjalan tanpa dependencies berat: `debunk_available` akan `false` di `/predict`, dan UI menampilkan "Fitur pencocokan klaim tidak aktif di server ini".
 
+## 📦 Obtaining Model Artefacts (Official Path)
+
+Artefak model (`*.pkl`, `*.npy`, `hoax_index_meta.json`) **tidak disimpan di repositori** (dicantumkan di `.gitignore`) karena berukuran besar. Setelah clone bersih, model belum siap dan `/predict` menjawab:
+
+```
+{"error":"Model belum siap. Jalankan train_model.py terlebih dahulu."}
+```
+
+`/health` tetap menampilkan `status: "healthy"` dengan `model_loaded: false` dan detail per-model (English / Indonesian) yang tidak tersedia — tidak crash dan tidak diam-diam salah bahasa.
+
+### Jalur resmi: siapkan data → latih → verifikasi checksum
+
+```bash
+# 1. Siapkan data latih Indonesia (download + cleaning, ~beberapa MB)
+python scripts/prepare_dataset_id.py
+
+# 2. Latih model Indonesia (+ threshold tuning, evaluasi hold-out)
+python train_model_id.py --allow-sample
+
+#   Catatan: tanpa --allow-sample, pelatihan ditolak bila data/train_id.csv
+#   tidak tersedia dan hanya sample_news_id.csv tersedia (eksperimental,
+#   tidak andal produksi).
+
+# 3. (Opsional) Latih model Inggris (utama)
+python scripts/prepare_dataset.py
+python train_model.py
+
+# 4. Verifikasi integritas artefak dengan checksum
+cd models
+sha256sum -c CHECKSUMS.txt
+```
+
+Setiap artefak yang ada di disk akan diverifikasi SHA-256 terhadap `models/CHECKSUMS.txt` saat aplikasi start. Artefak yang hash-nya tidak cocok akan dilewati (tidak dimuat), dan aplikasi tetap berjalan dengan artefak yang tersedia. Lewati seluruh verifikasi dengan `SKIP_CHECKSUM=1`.
+
+### Alternatif: rilis artefak (GitHub Release)
+
+Maintainer dapat mem-publish artefak model sebagai GitHub Release dengan berkas `models/CHECKSUMS.txt` (SHA-256). Pengguna mengunduh artefak ke `models/`, lalu menjalankan `sha256sum -c CHECKSUMS.txt` sebelum memulai aplikasi.
+
 ---
 
 ## 🔬 Methodology (Why the Numbers Are Trustworthy)

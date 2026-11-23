@@ -560,3 +560,42 @@ def test_build_advice_cenderung_hoaks_tidak_berubah():
     advice = build_advice('cenderung_hoaks', 80.0, 20.0, 5)
     assert advice['judul'] == 'Cenderung hoaks'
     assert 'Jangan dibagikan dulu' in advice['saran']
+
+
+# --- Uji: model tidak ada (clone bersih) ---------------------------------------
+
+
+def test_predict_model_tidak_ada(client, monkeypatch):
+    """Bila model belum dilatih, /predict tidak crash; balas pesan jelas (500)."""
+    import app as app_module
+
+    monkeypatch.setattr(app_module, 'model', None)
+    monkeypatch.setattr(app_module, 'tfidf', None)
+
+    response = client.post('/predict', json={'text': 'Teks apa saja di sini.'})
+    assert response.status_code == 500
+    data = response.get_json()
+    assert 'error' in data
+    assert 'belum siap' in data['error'].lower()
+    assert 'train_model' in data['error'].lower()
+
+
+def test_health_model_tidak_ada(client, monkeypatch):
+    """Bila model belum dilatih, /health tetap 200 dan menunjukkan model mana yang tidak tersedia."""
+    import app as app_module
+
+    monkeypatch.setattr(app_module, 'model', None)
+    monkeypatch.setattr(app_module, 'tfidf', None)
+    monkeypatch.setattr(app_module, 'model_en', None)
+    monkeypatch.setattr(app_module, 'tfidf_en', None)
+    monkeypatch.setattr(app_module, 'model_id', None)
+    monkeypatch.setattr(app_module, 'tfidf_id', None)
+
+    response = client.get('/health')
+    assert response.status_code == 200
+    data = response.get_json()
+    assert data['status'] == 'healthy'
+    assert data['model_loaded'] is False
+    assert data['vectorizer_loaded'] is False
+    assert data['models']['en']['loaded'] is False
+    assert data['models']['id']['loaded'] is False
